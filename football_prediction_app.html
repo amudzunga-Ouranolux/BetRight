@@ -1,0 +1,251 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); }
+.app { padding: 1rem 0; }
+.header { margin-bottom: 1.5rem; }
+.header h1 { font-size: 22px; font-weight: 500; color: var(--color-text-primary); }
+.header p { font-size: 14px; color: var(--color-text-secondary); margin-top: 4px; }
+.search-row { display: flex; gap: 8px; margin-bottom: 1.5rem; }
+.search-row input { flex: 1; height: 40px; padding: 0 12px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); font-size: 14px; background: var(--color-background-primary); color: var(--color-text-primary); }
+.search-row select { height: 40px; padding: 0 10px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); font-size: 14px; background: var(--color-background-primary); color: var(--color-text-primary); }
+.search-row button { height: 40px; padding: 0 18px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); font-size: 14px; background: var(--color-background-primary); color: var(--color-text-primary); cursor: pointer; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.search-row button:hover { background: var(--color-background-secondary); }
+.matches-grid { display: grid; gap: 12px; }
+.match-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; }
+.match-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.league-badge { font-size: 11px; color: var(--color-text-secondary); background: var(--color-background-secondary); padding: 3px 8px; border-radius: var(--border-radius-md); }
+.match-time { font-size: 11px; color: var(--color-text-tertiary); }
+.teams-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.team { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+.team-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); text-align: center; }
+.team-rank { font-size: 11px; color: var(--color-text-tertiary); }
+.vs { font-size: 13px; color: var(--color-text-tertiary); padding: 0 12px; }
+.predict-btn { width: 100%; height: 36px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); font-size: 13px; background: var(--color-background-primary); color: var(--color-text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.predict-btn:hover { background: var(--color-background-secondary); }
+.predict-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.prediction-panel { margin-top: 14px; border-top: 0.5px solid var(--color-border-tertiary); padding-top: 14px; }
+.pred-tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+.pred-tab { font-size: 12px; padding: 4px 10px; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); background: var(--color-background-secondary); color: var(--color-text-secondary); cursor: pointer; }
+.pred-tab.active { background: #1D9E75; color: #fff; border-color: #1D9E75; }
+.pred-section { display: none; }
+.pred-section.active { display: block; }
+.result-bars { display: grid; gap: 8px; }
+.result-bar-row { display: flex; align-items: center; gap: 10px; }
+.result-label { font-size: 13px; color: var(--color-text-secondary); width: 28px; flex-shrink: 0; }
+.bar-wrap { flex: 1; height: 8px; background: var(--color-background-secondary); border-radius: 4px; overflow: hidden; }
+.bar-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+.bar-home { background: #1D9E75; }
+.bar-draw { background: #888780; }
+.bar-away { background: #378ADD; }
+.result-pct { font-size: 13px; font-weight: 500; color: var(--color-text-primary); width: 36px; text-align: right; flex-shrink: 0; }
+.outcome-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { padding: 6px 12px; border-radius: var(--border-radius-md); font-size: 12px; font-weight: 500; border: 0.5px solid var(--color-border-tertiary); }
+.chip-high { background: #EAF3DE; color: #3B6D11; border-color: #97C459; }
+.chip-mid { background: #FAEEDA; color: #854F0B; border-color: #EF9F27; }
+.chip-low { background: #FCEBEB; color: #A32D2D; border-color: #F09595; }
+.verdict { margin-top: 10px; padding: 8px 12px; background: var(--color-background-secondary); border-radius: var(--border-radius-md); font-size: 13px; color: var(--color-text-secondary); line-height: 1.5; }
+.verdict strong { color: var(--color-text-primary); font-weight: 500; }
+.loading-dots { display: inline-flex; gap: 4px; }
+.loading-dots span { width: 6px; height: 6px; border-radius: 50%; background: var(--color-text-tertiary); animation: blink 1.2s infinite; }
+.loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes blink { 0%,80%,100% { opacity: 0.2; } 40% { opacity: 1; } }
+.empty-state { text-align: center; padding: 3rem 1rem; color: var(--color-text-tertiary); font-size: 14px; }
+.status-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+.status-row span { font-size: 13px; color: var(--color-text-secondary); }
+.confidence-badge { font-size: 11px; padding: 3px 8px; border-radius: var(--border-radius-md); font-weight: 500; }
+.conf-high { background: #EAF3DE; color: #3B6D11; }
+.conf-med { background: #FAEEDA; color: #854F0B; }
+.conf-low { background: #FCEBEB; color: #A32D2D; }
+</style>
+
+<div class="app">
+  <h2 class="sr-only">Football match prediction app powered by AI</h2>
+  <div class="header">
+    <h1><i class="ti ti-ball-football" aria-hidden="true" style="font-size:20px; vertical-align:-2px; margin-right:6px;"></i>Football predictor</h1>
+    <p>Enter two teams to get AI-powered match predictions</p>
+  </div>
+
+  <div class="search-row">
+    <input type="text" id="homeTeam" placeholder="Home team (e.g. Arsenal)" />
+    <input type="text" id="awayTeam" placeholder="Away team (e.g. Chelsea)" />
+    <select id="leagueSelect">
+      <option value="Premier League">Premier League</option>
+      <option value="La Liga">La Liga</option>
+      <option value="Serie A">Serie A</option>
+      <option value="Bundesliga">Bundesliga</option>
+      <option value="Ligue 1">Ligue 1</option>
+      <option value="PSL">PSL</option>
+      <option value="Champions League">Champions League</option>
+      <option value="Other">Other</option>
+    </select>
+    <button id="addBtn"><i class="ti ti-plus" aria-hidden="true"></i> Add match</button>
+  </div>
+
+  <div id="matchesContainer" class="matches-grid">
+    <div class="empty-state">
+      <i class="ti ti-ball-football" style="font-size:32px; display:block; margin-bottom:8px;" aria-hidden="true"></i>
+      Add a match above to get predictions
+    </div>
+  </div>
+</div>
+
+<script>
+const matchesContainer = document.getElementById('matchesContainer');
+const matches = [];
+
+document.getElementById('addBtn').addEventListener('click', () => {
+  const home = document.getElementById('homeTeam').value.trim();
+  const away = document.getElementById('awayTeam').value.trim();
+  const league = document.getElementById('leagueSelect').value;
+  if (!home || !away) { alert('Please enter both team names.'); return; }
+  const id = Date.now();
+  matches.push({ id, home, away, league, prediction: null });
+  document.getElementById('homeTeam').value = '';
+  document.getElementById('awayTeam').value = '';
+  renderMatches();
+});
+
+function renderMatches() {
+  if (matches.length === 0) {
+    matchesContainer.innerHTML = `<div class="empty-state"><i class="ti ti-ball-football" style="font-size:32px; display:block; margin-bottom:8px;" aria-hidden="true"></i>Add a match above to get predictions</div>`;
+    return;
+  }
+  matchesContainer.innerHTML = matches.map(m => `
+    <div class="match-card" id="card-${m.id}">
+      <div class="match-header">
+        <span class="league-badge"><i class="ti ti-trophy" style="font-size:11px; vertical-align:-1px; margin-right:3px;" aria-hidden="true"></i>${m.league}</span>
+        <span class="match-time">${new Date().toLocaleDateString('en-GB', {day:'numeric',month:'short'})}</span>
+      </div>
+      <div class="teams-row">
+        <div class="team"><div class="team-name">${m.home}</div><div class="team-rank">Home</div></div>
+        <div class="vs">vs</div>
+        <div class="team"><div class="team-name">${m.away}</div><div class="team-rank">Away</div></div>
+      </div>
+      ${m.prediction ? renderPrediction(m) : `
+      <button class="predict-btn" onclick="getPrediction(${m.id})">
+        <i class="ti ti-brain" aria-hidden="true"></i> Get AI prediction
+      </button>`}
+    </div>
+  `).join('');
+}
+
+function renderPrediction(m) {
+  const p = m.prediction;
+  const conf = p.confidence >= 70 ? 'conf-high' : p.confidence >= 50 ? 'conf-med' : 'conf-low';
+  const confLabel = p.confidence >= 70 ? 'High confidence' : p.confidence >= 50 ? 'Medium confidence' : 'Low confidence';
+  return `
+    <div class="prediction-panel">
+      <div class="status-row">
+        <span><i class="ti ti-sparkles" style="font-size:13px; vertical-align:-1px; margin-right:4px;" aria-hidden="true"></i>AI prediction</span>
+        <span class="confidence-badge ${conf}">${confLabel} · ${p.confidence}%</span>
+      </div>
+      <div class="pred-tabs">
+        <div class="pred-tab active" onclick="switchTab(${m.id}, 'result', this)">Match result</div>
+        <div class="pred-tab" onclick="switchTab(${m.id}, 'goals', this)">Over/Under</div>
+        <div class="pred-tab" onclick="switchTab(${m.id}, 'btts', this)">BTTS</div>
+      </div>
+      <div id="tab-result-${m.id}" class="pred-section active">
+        <div class="result-bars">
+          <div class="result-bar-row">
+            <span class="result-label">1</span>
+            <div class="bar-wrap"><div class="bar-fill bar-home" style="width:${p.homeWin}%"></div></div>
+            <span class="result-pct">${p.homeWin}%</span>
+          </div>
+          <div class="result-bar-row">
+            <span class="result-label">X</span>
+            <div class="bar-wrap"><div class="bar-fill bar-draw" style="width:${p.draw}%"></div></div>
+            <span class="result-pct">${p.draw}%</span>
+          </div>
+          <div class="result-bar-row">
+            <span class="result-label">2</span>
+            <div class="bar-wrap"><div class="bar-fill bar-away" style="width:${p.awayWin}%"></div></div>
+            <span class="result-pct">${p.awayWin}%</span>
+          </div>
+        </div>
+        <div class="verdict">${p.resultVerdict}</div>
+      </div>
+      <div id="tab-goals-${m.id}" class="pred-section">
+        <div class="outcome-chips">
+          <div class="chip ${p.over25 >= 60 ? 'chip-high' : p.over25 >= 45 ? 'chip-mid' : 'chip-low'}">Over 2.5 goals · ${p.over25}%</div>
+          <div class="chip ${p.under25 >= 60 ? 'chip-high' : p.under25 >= 45 ? 'chip-mid' : 'chip-low'}">Under 2.5 goals · ${p.under25}%</div>
+          <div class="chip ${p.over15 >= 60 ? 'chip-high' : p.over15 >= 45 ? 'chip-mid' : 'chip-low'}">Over 1.5 goals · ${p.over15}%</div>
+        </div>
+        <div class="verdict">${p.goalsVerdict}</div>
+      </div>
+      <div id="tab-btts-${m.id}" class="pred-section">
+        <div class="outcome-chips">
+          <div class="chip ${p.bttsYes >= 60 ? 'chip-high' : p.bttsYes >= 45 ? 'chip-mid' : 'chip-low'}">BTTS Yes · ${p.bttsYes}%</div>
+          <div class="chip ${p.bttsNo >= 60 ? 'chip-high' : p.bttsNo >= 45 ? 'chip-mid' : 'chip-low'}">BTTS No · ${p.bttsNo}%</div>
+        </div>
+        <div class="verdict">${p.bttsVerdict}</div>
+      </div>
+    </div>
+  `;
+}
+
+function switchTab(id, tab, el) {
+  const card = document.getElementById('card-' + id);
+  card.querySelectorAll('.pred-tab').forEach(t => t.classList.remove('active'));
+  card.querySelectorAll('.pred-section').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + tab + '-' + id).classList.add('active');
+}
+
+async function getPrediction(id) {
+  const m = matches.find(x => x.id === id);
+  const card = document.getElementById('card-' + id);
+  const btn = card.querySelector('.predict-btn');
+  btn.disabled = true;
+  btn.innerHTML = `<span class="loading-dots"><span></span><span></span><span></span></span> Analyzing...`;
+
+  const prompt = `You are a football match prediction expert. Analyze a match between ${m.home} (home) vs ${m.away} (away) in the ${m.league}.
+
+Return ONLY a JSON object with these exact fields (no markdown, no explanation):
+{
+  "homeWin": <integer 0-100>,
+  "draw": <integer 0-100>,
+  "awayWin": <integer 0-100>,
+  "over25": <integer 0-100>,
+  "under25": <integer 0-100>,
+  "over15": <integer 0-100>,
+  "bttsYes": <integer 0-100>,
+  "bttsNo": <integer 0-100>,
+  "confidence": <integer 0-100>,
+  "resultVerdict": "<one sentence prediction summary for match result>",
+  "goalsVerdict": "<one sentence prediction summary for goals>",
+  "bttsVerdict": "<one sentence prediction summary for both teams to score>"
+}
+
+Rules:
+- homeWin + draw + awayWin must equal 100
+- over25 + under25 must equal 100
+- bttsYes + bttsNo must equal 100
+- Base predictions on team strengths, home advantage, league context, and recent typical form
+- Be realistic and analytical`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const text = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+    const clean = text.replace(/```json|```/g, '').trim();
+    const pred = JSON.parse(clean);
+    m.prediction = pred;
+    renderMatches();
+  } catch (e) {
+    btn.disabled = false;
+    btn.innerHTML = `<i class="ti ti-refresh" aria-hidden="true"></i> Retry prediction`;
+    console.error(e);
+  }
+}
+</script>
