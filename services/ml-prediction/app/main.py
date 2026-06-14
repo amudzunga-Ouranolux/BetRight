@@ -20,6 +20,7 @@ from .jobs.predict_batch import run as run_predict_batch
 from .schemas import (
     CompetitionProfileOut,
     FixturePredictRequest,
+    ManualPredictionOut,
     ManualPredictRequest,
     ModelPerformanceOut,
     PredictionOut,
@@ -28,7 +29,7 @@ from .schemas import (
 from .service import (
     competition_profile,
     get_or_create_prediction,
-    predict_manual,
+    manual_prediction,
     team_profile,
 )
 from .store import repo
@@ -86,10 +87,10 @@ def predict_one(req: FixturePredictRequest, session: Session = Depends(db)) -> P
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
-@app.post("/internal/predict/manual", response_model=PredictionOut)
-def predict_manual_route(req: ManualPredictRequest, session: Session = Depends(db)) -> PredictionOut:
+@app.post("/internal/predict/manual", response_model=ManualPredictionOut)
+def predict_manual_route(req: ManualPredictRequest, session: Session = Depends(db)) -> ManualPredictionOut:
     try:
-        return predict_manual(session, req.home_team_id, req.away_team_id, req.venue)
+        return manual_prediction(session, req.home_team_id, req.away_team_id, req.venue)
     except LookupError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

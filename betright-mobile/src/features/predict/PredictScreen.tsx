@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Modal, Pressable, ScrollView } from 'react-native';
 import { router } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import {
   BarChart3,
   CalendarDays,
@@ -27,14 +28,13 @@ import {
 import { Box, useTheme } from '@/core/theme/restyle';
 import { useResponsive } from '@/core/theme/responsive';
 import { catalogTeams } from '@/core/api/mock/catalog';
-import { mockMatchPrediction } from '@/core/api/mock/fixtures';
+import { predictManual } from '@/core/api/hooks';
 import {
   buildPredictBreakdown,
   type FormResult,
   type KeyStat,
   type Venue,
 } from '@/core/api/mock/predict';
-import type { MatchPrediction } from '@/models/prediction.model';
 import { Screen } from '@/components/layout/Screen';
 import { Divider } from '@/components/layout/Divider';
 import { BRText } from '@/components/primitives/BRText';
@@ -71,27 +71,23 @@ export function PredictScreen() {
   const [homeId, setHomeId] = useState(catalogTeams[0].id);
   const [awayId, setAwayId] = useState(catalogTeams[1].id);
   const [venue, setVenue] = useState<Venue>('home');
-  const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<MatchPrediction | null>(null);
+  const [revealed, setRevealed] = useState(false);
   /** Which side's team picker is open (null = closed). */
   const [picking, setPicking] = useState<'home' | 'away' | null>(null);
 
   const home = catalogTeams.find((t) => t.id === homeId)!;
   const away = catalogTeams.find((t) => t.id === awayId)!;
 
-  const breakdown = useMemo(
-    () => buildPredictBreakdown(homeId, awayId, home.name, venue),
-    [homeId, awayId, home.name, venue],
-  );
+  // Fetch the breakdown + prediction from the backend (mock fallback offline).
+  const { data: manual, isFetching } = useQuery({
+    queryKey: ['manual', homeId, awayId, venue],
+    queryFn: () => predictManual(homeId, awayId, venue),
+  });
+  const breakdown = manual?.breakdown ?? buildPredictBreakdown(homeId, awayId, home.name, venue);
+  const result = revealed ? (manual?.prediction ?? null) : null;
+  const loading = revealed && isFetching;
 
-  const generate = () => {
-    setLoading(true);
-    setResult(null);
-    setTimeout(() => {
-      setResult(mockMatchPrediction('fx_1'));
-      setLoading(false);
-    }, 700);
-  };
+  const generate = () => setRevealed(true);
 
   // Predict is a tab root; fall back to Home when there is no back stack.
   const goBack = () => (router.canGoBack() ? router.back() : router.replace('/home'));

@@ -94,6 +94,38 @@ class ManualPredictRequest(BaseModel):
     venue: Literal["home", "neutral", "away"] = "home"
 
 
+class FormBreakdownOut(BaseModel):
+    results: list[str]
+    goals_scored: float
+    goals_conceded: float
+
+
+class H2HOut(BaseModel):
+    home_goals: int
+    away_goals: int
+
+
+class KeyStatOut(BaseModel):
+    label: str
+    home: float
+    away: float
+    unit: str | None = None
+    lower_is_better: bool = False
+
+
+class ManualBreakdownOut(BaseModel):
+    home_form: FormBreakdownOut
+    away_form: FormBreakdownOut
+    h2h: list[H2HOut]
+    key_stats: list[KeyStatOut]
+    tip: str
+
+
+class ManualPredictionOut(BaseModel):
+    prediction: PredictionOut
+    breakdown: ManualBreakdownOut
+
+
 class FixturePredictRequest(BaseModel):
     fixture_id: str
 

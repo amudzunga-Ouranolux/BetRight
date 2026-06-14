@@ -185,7 +185,7 @@ app.MapPost("/v1/predictions/manual", async (ManualRequest req, MlClient ml) =>
     var pred = await ml.PredictManualAsync(req.HomeTeamId, req.AwayTeamId, req.Venue ?? "home");
     if (pred is null)
         return Results.Json(Fail("INVALID_TEAM", "Unknown team in manual prediction."), statusCode: 404);
-    return Results.Ok(Ok(PredictionMapper.MatchPrediction(pred)));
+    return Results.Ok(Ok(PredictionMapper.ManualPrediction(pred)));
 });
 
 app.MapGet("/v1/models/performance", async (MlClient ml) =>
@@ -322,6 +322,15 @@ app.MapGet("/v1/users/me/profile", async (HttpContext ctx, UserRepo users, Db db
     return Results.Ok(Ok(dto));
 });
 
+app.MapPost("/v1/users/me/favourites", async (HttpContext ctx, FavouritesPrefsRequest req, FavouritesRepo favs, AuditRepo audit, Db db) =>
+{
+    if (!db.Configured) return Results.Json(Fail("NO_DB", "User store not configured."), statusCode: 503);
+    var userId = CurrentUser.Id(ctx);
+    await favs.Replace(userId, req.Teams ?? [], req.Leagues ?? []);
+    await audit.Log(userId, "set_favourites", "user_favourites", userId);
+    return Results.Ok(Ok(new { saved = true }));
+});
+
 app.MapPut("/v1/users/me/preferences", async (HttpContext ctx, UserPreferencesDto req, UserRepo users, AuditRepo audit, Db db) =>
 {
     if (!db.Configured) return Results.Json(Fail("NO_DB", "User store not configured."), statusCode: 503);
@@ -379,3 +388,4 @@ public partial class Program { }
 public record ManualRequest(string HomeTeamId, string AwayTeamId, string? Venue = "home");
 public record SaveRequest(string FixtureId);
 public record NotificationPrefsRequest(bool NotifyPredictions, bool NotifyResults, bool NotifyNews);
+public record FavouritesPrefsRequest(List<string>? Teams, List<string>? Leagues);

@@ -5,7 +5,7 @@ import type { MatchPrediction } from '@/models/prediction.model';
 
 import type { TeamSummary } from '@/models/team.model';
 
-import { deleteData, getData, postData } from './client';
+import { deleteData, getData, postData, putData } from './client';
 import {
   mockFixtures,
   mockMatchPrediction,
@@ -23,6 +23,7 @@ import {
   type FavTeam,
   type FavUpdate,
 } from './mock/favourites';
+import { buildPredictBreakdown, type PredictBreakdown, type Venue } from './mock/predict';
 import { queryKeys } from './queryKeys';
 
 export interface HomePayload {
@@ -143,16 +144,24 @@ export function useModelPerformance() {
   });
 }
 
-/** Generate an ad-hoc prediction for any two teams (Manual Predict). */
+export interface ManualPredictionResult {
+  prediction: MatchPrediction;
+  breakdown: PredictBreakdown;
+}
+
+/** Generate an ad-hoc prediction + stats breakdown for any two teams (Manual Predict). */
 export function predictManual(
   homeTeamId: string,
   awayTeamId: string,
-  venue: 'home' | 'neutral' | 'away' = 'home',
+  venue: Venue = 'home',
 ) {
-  return postData<MatchPrediction>(
+  return postData<ManualPredictionResult>(
     '/v1/predictions/manual',
     { homeTeamId, awayTeamId, venue },
-    () => mockMatchPrediction('fx_1'),
+    () => ({
+      prediction: mockMatchPrediction('fx_1'),
+      breakdown: buildPredictBreakdown(homeTeamId, awayTeamId, homeTeamId, venue),
+    }),
   );
 }
 
@@ -294,6 +303,27 @@ export interface NotificationItem {
   fixtureId?: string;
   read: boolean;
   createdAt: string;
+}
+
+// --- Persist favourites & preferences --------------------------------------
+
+export interface UserPreferencesPayload {
+  oddsFormat: string;
+  kitId: string;
+  textSize: string;
+  notifyPredictions: boolean;
+  notifyResults: boolean;
+  notifyNews: boolean;
+}
+
+/** Replace the user's favourite teams + leagues (called on onboarding completion). */
+export function saveFavourites(teams: string[], leagues: string[]) {
+  return postData<{ saved: boolean }>('/v1/users/me/favourites', { teams, leagues }, () => ({ saved: true }));
+}
+
+/** Persist user preferences (kit, text size, odds format, notification toggles). */
+export function savePreferences(prefs: UserPreferencesPayload) {
+  return putData<{ updated: boolean }>('/v1/users/me/preferences', prefs, () => ({ updated: true }));
 }
 
 export function useNotifications() {

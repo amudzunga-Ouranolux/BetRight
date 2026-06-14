@@ -67,6 +67,20 @@ def get_rating(session: Session, team_id: str) -> models.TeamRating | None:
     return session.get(models.TeamRating, team_id)
 
 
+def matches_between(session: Session, a: str, b: str, limit: int = 5) -> list[models.Match]:
+    """Most recent finished matches between two teams (either home/away order)."""
+    stmt = (
+        select(models.Match)
+        .where(
+            ((models.Match.home_team_id == a) & (models.Match.away_team_id == b))
+            | ((models.Match.home_team_id == b) & (models.Match.away_team_id == a))
+        )
+        .order_by(models.Match.kickoff_time.desc())
+        .limit(limit)
+    )
+    return list(session.scalars(stmt))
+
+
 def matches_for_teams(
     session: Session, team_ids: list[str], before: datetime
 ) -> list[HistMatch]:

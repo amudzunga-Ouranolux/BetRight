@@ -23,14 +23,14 @@ public class MlClient(HttpClient http)
         return await resp.Content.ReadFromJsonAsync<MlPrediction>(Json, ct);
     }
 
-    public async Task<MlPrediction?> PredictManualAsync(
+    public async Task<MlManualPrediction?> PredictManualAsync(
         string homeTeamId, string awayTeamId, string venue, CancellationToken ct = default)
     {
         var body = new { home_team_id = homeTeamId, away_team_id = awayTeamId, venue };
         var resp = await http.PostAsJsonAsync("/internal/predict/manual", body, ct);
         if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
         resp.EnsureSuccessStatusCode();
-        return await resp.Content.ReadFromJsonAsync<MlPrediction>(Json, ct);
+        return await resp.Content.ReadFromJsonAsync<MlManualPrediction>(Json, ct);
     }
 
     public async Task<List<MlPrediction>> UpcomingAsync(int limit = 50, CancellationToken ct = default)

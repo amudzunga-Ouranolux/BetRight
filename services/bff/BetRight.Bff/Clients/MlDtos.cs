@@ -80,6 +80,33 @@ public record MlModelPerformance(
     [property: JsonPropertyName("log_loss")] double? LogLoss,
     [property: JsonPropertyName("sample_size")] int SampleSize);
 
+public record MlFormBreakdown(
+    [property: JsonPropertyName("results")] List<string> Results,
+    [property: JsonPropertyName("goals_scored")] double GoalsScored,
+    [property: JsonPropertyName("goals_conceded")] double GoalsConceded);
+
+public record MlH2H(
+    [property: JsonPropertyName("home_goals")] int HomeGoals,
+    [property: JsonPropertyName("away_goals")] int AwayGoals);
+
+public record MlKeyStat(
+    [property: JsonPropertyName("label")] string Label,
+    [property: JsonPropertyName("home")] double Home,
+    [property: JsonPropertyName("away")] double Away,
+    [property: JsonPropertyName("unit")] string? Unit,
+    [property: JsonPropertyName("lower_is_better")] bool LowerIsBetter);
+
+public record MlManualBreakdown(
+    [property: JsonPropertyName("home_form")] MlFormBreakdown HomeForm,
+    [property: JsonPropertyName("away_form")] MlFormBreakdown AwayForm,
+    [property: JsonPropertyName("h2h")] List<MlH2H> H2h,
+    [property: JsonPropertyName("key_stats")] List<MlKeyStat> KeyStats,
+    [property: JsonPropertyName("tip")] string Tip);
+
+public record MlManualPrediction(
+    [property: JsonPropertyName("prediction")] MlPrediction Prediction,
+    [property: JsonPropertyName("breakdown")] MlManualBreakdown Breakdown);
+
 public record MlTeamForm(
     [property: JsonPropertyName("attack_strength")] double AttackStrength,
     [property: JsonPropertyName("defence_strength")] double DefenceStrength,

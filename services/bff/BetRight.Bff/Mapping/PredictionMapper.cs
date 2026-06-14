@@ -117,6 +117,19 @@ public static class PredictionMapper
     public static ModelPerformanceDto ModelPerformance(MlModelPerformance m) =>
         new(m.ModelVersion, m.Accuracy, m.BrierScore, m.LogLoss, m.SampleSize);
 
+    public static ManualPredictionDto ManualPrediction(MlManualPrediction m)
+    {
+        var b = m.Breakdown;
+        return new ManualPredictionDto(
+            Prediction: MatchPrediction(m.Prediction),
+            Breakdown: new ManualBreakdownDto(
+                HomeForm: new ManualFormDto(b.HomeForm.Results, b.HomeForm.GoalsScored, b.HomeForm.GoalsConceded),
+                AwayForm: new ManualFormDto(b.AwayForm.Results, b.AwayForm.GoalsScored, b.AwayForm.GoalsConceded),
+                H2h: b.H2h.Select(h => new ManualH2HDto(h.HomeGoals, h.AwayGoals)).ToList(),
+                KeyStats: b.KeyStats.Select(k => new ManualKeyStatDto(k.Label, k.Home, k.Away, k.Unit, k.LowerIsBetter)).ToList(),
+                Tip: b.Tip));
+    }
+
     private static ExplanationReasonDto Reason(MlReason r) =>
         new(r.Title, r.Description, r.Impact, r.Strength);
 }

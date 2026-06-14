@@ -29,6 +29,21 @@ public record CompetitionProfileDto(
     List<StandingRowDto> Table,
     List<FixtureDto> Upcoming);
 
+// --- Manual prediction breakdown (matches the app's PredictBreakdown) ---
+
+public record ManualFormDto(List<string> Results, double GoalsScored, double GoalsConceded);
+public record ManualH2HDto(int HomeGoals, int AwayGoals);
+public record ManualKeyStatDto(string Label, double Home, double Away, string? Unit, bool LowerIsBetter);
+
+public record ManualBreakdownDto(
+    ManualFormDto HomeForm,
+    ManualFormDto AwayForm,
+    List<ManualH2HDto> H2h,
+    List<ManualKeyStatDto> KeyStats,
+    string Tip);
+
+public record ManualPredictionDto(MatchPredictionDto Prediction, ManualBreakdownDto Breakdown);
+
 // --- Favourites hub (matches the app's FavouritesHub / FavTeam / FavLeague / FavUpdate) ---
 
 public record FavUpdateDto(string Id, string Kind, string Title, string Detail, string TimeAgo);

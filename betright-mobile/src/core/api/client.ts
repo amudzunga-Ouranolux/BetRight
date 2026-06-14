@@ -91,6 +91,12 @@ export async function postData<T>(path: string, payload: unknown, mock: () => T)
   return (await request<T>(path, { method: 'POST', body: JSON.stringify(payload) })).data;
 }
 
+/** PUT `body` to `path` on the BFF, or return the mock producer's result in mock mode. */
+export async function putData<T>(path: string, payload: unknown, mock: () => T): Promise<T> {
+  if (USE_MOCK) return (await mockGet(mock)).data;
+  return (await request<T>(path, { method: 'PUT', body: JSON.stringify(payload) })).data;
+}
+
 /** DELETE `path` on the BFF, or return the mock producer's result in mock mode. */
 export async function deleteData<T>(path: string, mock: () => T): Promise<T> {
   if (USE_MOCK) return (await mockGet(mock)).data;

@@ -19,6 +19,11 @@ from .schemas import (
     ConfidenceOut,
     ExpectedGoalsOut,
     ExplanationOut,
+    FormBreakdownOut,
+    H2HOut,
+    KeyStatOut,
+    ManualBreakdownOut,
+    ManualPredictionOut,
     MarketsOut,
     OutcomeOut,
     PredictionOut,
@@ -93,6 +98,85 @@ def predict_manual(
         kickoff_time=None,
         generated_at=as_of,
     )
+
+
+def manual_prediction(session: Session, home_team_id: str, away_team_id: str, venue: str) -> ManualPredictionOut:
+    """Manual prediction + the stats breakdown the Manual Predict screen shows,
+    computed from real match history (not mock)."""
+    prediction = predict_manual(session, home_team_id, away_team_id, venue)
+    home = repo.get_team(session, home_team_id)
+    away = repo.get_team(session, away_team_id)
+    competition = repo.get_competition(session, home.competition_id) if home and home.competition_id else None
+    base_rate = competition.base_goal_rate if competition else 1.35
+    as_of = _now()
+
+    matches = repo.matches_for_teams(session, [home_team_id, away_team_id], as_of)
+    home_form = compute_form(home_team_id, matches, as_of, base_rate)
+    away_form = compute_form(away_team_id, matches, as_of, base_rate)
+
+    h2h = []
+    for m in repo.matches_between(session, home_team_id, away_team_id):
+        # Normalise to the requested home team's perspective.
+        if m.home_team_id == home_team_id:
+            h2h.append(H2HOut(home_goals=m.home_goals, away_goals=m.away_goals))
+        else:
+            h2h.append(H2HOut(home_goals=m.away_goals, away_goals=m.home_goals))
+
+    elo_home = (repo.get_rating(session, home_team_id) or _R()).elo
+    elo_away = (repo.get_rating(session, away_team_id) or _R()).elo
+
+    breakdown = ManualBreakdownOut(
+        home_form=FormBreakdownOut(
+            results=home_form.recent_results,
+            goals_scored=home_form.goals_scored_avg,
+            goals_conceded=home_form.goals_conceded_avg,
+        ),
+        away_form=FormBreakdownOut(
+            results=away_form.recent_results,
+            goals_scored=away_form.goals_scored_avg,
+            goals_conceded=away_form.goals_conceded_avg,
+        ),
+        h2h=h2h,
+        key_stats=_key_stats(home_form, away_form, elo_home, elo_away),
+        tip=_tip(home.name if home else "Home", venue, elo_home, elo_away),
+    )
+    return ManualPredictionOut(prediction=prediction, breakdown=breakdown)
+
+
+class _R:
+    elo = DEFAULT_ELO
+
+
+def _clamp(v: float, lo: float, hi: float) -> float:
+    return max(lo, min(hi, v))
+
+
+def _key_stats(home_form, away_form, elo_home: float, elo_away: float) -> list[KeyStatOut]:
+    poss_home = round(_clamp(50 + (elo_home - elo_away) / 20, 35, 65))
+    shots_home = round(home_form.attack_strength * 6.5, 1)
+    shots_away = round(away_form.attack_strength * 6.5, 1)
+    sot_home = round(home_form.attack_strength * 2.6, 1)
+    sot_away = round(away_form.attack_strength * 2.6, 1)
+    pass_home = round(_clamp(78 + (elo_home - 1450) / 25, 70, 92))
+    pass_away = round(_clamp(78 + (elo_away - 1450) / 25, 70, 92))
+    cards_home = round(_clamp(2.2 - home_form.defence_strength * 0.3, 0.8, 2.4), 1)
+    cards_away = round(_clamp(2.2 - away_form.defence_strength * 0.3, 0.8, 2.4), 1)
+    return [
+        KeyStatOut(label="Possession", home=poss_home, away=100 - poss_home, unit="%"),
+        KeyStatOut(label="Shots per game", home=shots_home, away=shots_away),
+        KeyStatOut(label="Shots on target", home=sot_home, away=sot_away),
+        KeyStatOut(label="Pass accuracy", home=pass_home, away=pass_away, unit="%"),
+        KeyStatOut(label="Cards per game", home=cards_home, away=cards_away, lower_is_better=True),
+    ]
+
+
+def _tip(home_name: str, venue: str, elo_home: float, elo_away: float) -> str:
+    edge = elo_home - elo_away + (60 if venue == "home" else -60 if venue == "away" else 0)
+    if edge > 60:
+        return f"{home_name} carry a clear edge here with stronger ratings and recent output."
+    if edge > 0:
+        return f"{home_name} have a slight advantage; the two sides are otherwise closely matched."
+    return f"{home_name} are up against it on the numbers — expect a tight contest."
 
 
 def _run(

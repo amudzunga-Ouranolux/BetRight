@@ -92,6 +92,23 @@ public class FavouritesRepo(Db db)
             "select kind, ref_id from user_favourites where user_id = @userId", new { userId });
         return rows.ToList();
     }
+
+    /// <summary>Replace the user's favourites with the given team + league ids.</summary>
+    public async Task Replace(string userId, IEnumerable<string> teams, IEnumerable<string> leagues)
+    {
+        using var c = db.Open();
+        using var tx = c.BeginTransaction();
+        await c.ExecuteAsync("delete from user_favourites where user_id = @userId", new { userId }, tx);
+        foreach (var t in teams.Distinct())
+            await c.ExecuteAsync(
+                "insert into user_favourites (user_id, kind, ref_id, created_at) values (@userId,'team',@t,now())",
+                new { userId, t }, tx);
+        foreach (var l in leagues.Distinct())
+            await c.ExecuteAsync(
+                "insert into user_favourites (user_id, kind, ref_id, created_at) values (@userId,'league',@l,now())",
+                new { userId, l }, tx);
+        tx.Commit();
+    }
 }
 
 public class SavedPredictionsRepo(Db db)
