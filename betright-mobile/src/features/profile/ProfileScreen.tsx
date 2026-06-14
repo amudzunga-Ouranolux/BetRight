@@ -15,6 +15,7 @@ import {
 
 import { Box, useTheme } from '@/core/theme/restyle';
 import { useResponsive } from '@/core/theme/responsive';
+import { logout } from '@/core/api/auth';
 import { storage } from '@/core/storage/mmkv';
 import { Screen } from '@/components/layout/Screen';
 import { BRText } from '@/components/primitives/BRText';
@@ -44,7 +45,8 @@ export function ProfileScreen() {
   const theme = useTheme();
   const r = useResponsive();
 
-  const signOut = () => {
+  const signOut = async () => {
+    await logout();
     storage.delete('betright.onboarded');
     router.replace('/auth/login');
   };

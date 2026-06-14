@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -12,6 +13,7 @@ import {
 } from '@expo-google-fonts/inter';
 
 import { queryClient } from '@/core/api/queryClient';
+import { useAuthStore } from '@/core/auth/authStore';
 import { ThemeProvider } from '@/core/theme/ThemeProvider';
 import '@/components/variants/register';
 
@@ -23,6 +25,11 @@ export default function RootLayout() {
     Inter_700Bold,
     Inter_800ExtraBold,
   });
+
+  // Restore the saved session (tokens from SecureStore) on cold start.
+  useEffect(() => {
+    void useAuthStore.getState().hydrate();
+  }, []);
 
   if (!fontsLoaded) return null;
 

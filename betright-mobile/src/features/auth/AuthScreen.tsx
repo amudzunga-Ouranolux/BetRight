@@ -5,7 +5,8 @@ import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Mail, Lock, User } from 'lucide-react-native';
 
-import { Box } from '@/core/theme/restyle';
+import { Box, useTheme } from '@/core/theme/restyle';
+import { login, register } from '@/core/api/auth';
 import { useResponsive } from '@/core/theme/responsive';
 import { useKitVariant } from '@/core/theme/variants';
 import { kitAssets } from '@/core/theme/assets';
@@ -30,6 +31,7 @@ export type AuthMode = 'login' | 'register';
 export function AuthScreen({ mode }: { mode: AuthMode }) {
   const isLogin = mode === 'login';
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
   const r = useResponsive();
   const padX = r.ms(24);
   const kitId = useThemeStore((s) => s.kitId);
@@ -39,10 +41,29 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
   // Single shared control height so inputs and all buttons are exactly equal.
   const controlHeight = r.s(44);
   const SocialButtons = useKitVariant<AuthSocialButtonsProps>(AUTH_SOCIAL_SLOT);
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const submit = () => router.replace('/onboarding/sports');
+  const submit = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (isLogin) {
+        await login(email, password);
+        router.replace('/(tabs)/home');
+      } else {
+        await register(email, password, name);
+        router.replace('/onboarding/sports');
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Screen edges={[]}>
@@ -76,7 +97,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
             {/* Form */}
             <Box gap="md" marginTop="xl">
               {!isLogin && (
-                <BRInput placeholder="Full name" icon={User} autoCapitalize="words" height={controlHeight} />
+                <BRInput placeholder="Full name" icon={User} autoCapitalize="words" value={name} onChangeText={setName} height={controlHeight} />
               )}
               <BRInput
                 placeholder="Email address"
@@ -101,11 +122,17 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
                   Forgot Password?
                 </BRText>
               )}
+              {error && (
+                <BRText variant="caption" style={{ color: theme.colors.danger }}>
+                  {error}
+                </BRText>
+              )}
               <BRButton
                 label={isLogin ? 'Log In' : 'Create Account'}
                 radius="sm"
                 height={controlHeight}
                 onPress={submit}
+                loading={loading}
                 fullWidth
               />
 

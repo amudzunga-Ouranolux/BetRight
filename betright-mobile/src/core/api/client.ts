@@ -1,3 +1,5 @@
+import { useAuthStore } from '@/core/auth/authStore';
+
 import type { ApiEnvelope } from './envelope';
 
 /**
@@ -13,7 +15,7 @@ import type { ApiEnvelope } from './envelope';
  * without touching any screen or hook body.
  */
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080';
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8080';
 export const USE_MOCK = (process.env.EXPO_PUBLIC_USE_MOCK ?? 'true') !== 'false';
 
 let requestCounter = 0;
@@ -33,11 +35,42 @@ export async function mockGet<T>(produce: () => T, delayMs = 350): Promise<ApiEn
   return wrap(produce());
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<ApiEnvelope<T>> {
+/** Exchange the refresh token for a new access token. Returns true on success. */
+async function tryRefresh(): Promise<boolean> {
+  const auth = useAuthStore.getState();
+  if (!auth.refreshToken) return false;
+  try {
+    const res = await fetch(`${BASE_URL}/v1/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: auth.refreshToken }),
+    });
+    if (!res.ok) {
+      await auth.clear();
+      return false;
+    }
+    const body = await res.json();
+    await auth.setTokens(body.data.accessToken, body.data.refreshToken);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function request<T>(path: string, init?: RequestInit, retry = true): Promise<ApiEnvelope<T>> {
+  const token = useAuthStore.getState().accessToken;
   const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...init?.headers,
+    },
   });
+  // Access token expired -> refresh once and retry.
+  if (res.status === 401 && retry && (await tryRefresh())) {
+    return request<T>(path, init, false);
+  }
   const body = (await res.json().catch(() => null)) as ApiEnvelope<T> | null;
   if (!res.ok || !body) {
     const message = body?.errors?.[0]?.message ?? `Request failed (${res.status})`;

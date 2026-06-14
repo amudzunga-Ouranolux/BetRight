@@ -1,10 +1,14 @@
+using System.Text;
 using System.Text.Json;
 using BetRight.Bff;
+using BetRight.Bff.Auth;
 using BetRight.Bff.Caching;
 using BetRight.Bff.Clients;
 using BetRight.Bff.Contracts;
 using BetRight.Bff.Data;
 using BetRight.Bff.Mapping;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,11 +35,50 @@ builder.Services.AddScoped<FavouritesRepo>();
 builder.Services.AddScoped<SavedPredictionsRepo>();
 builder.Services.AddScoped<NotificationsRepo>();
 builder.Services.AddScoped<AuditRepo>();
+builder.Services.AddScoped<RefreshTokenRepo>();
+
+// Auth: JWT bearer (sub claim → user). Dev/mock still works via the X-User-Id seam
+// while Auth:AllowDevUser is true.
+builder.Services.AddSingleton<JwtService>();
+var jwtSecret = builder.Configuration["Jwt:Secret"] ?? "dev-insecure-secret-change-me-please-0123456789";
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "betright";
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(o =>
+    {
+        o.MapInboundClaims = false; // keep the raw "sub" claim
+        o.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = jwtIssuer,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+            ValidateLifetime = true,
+        };
+    });
+builder.Services.AddAuthorization();
 
 var mlBaseUrl = builder.Configuration["Ml:BaseUrl"] ?? "http://localhost:8001";
 builder.Services.AddHttpClient<MlClient>(c => c.BaseAddress = new Uri(mlBaseUrl));
 
 var app = builder.Build();
+
+// Translate "no authenticated user" into a clean 401 envelope.
+app.Use(async (ctx, next) =>
+{
+    try { await next(); }
+    catch (UnauthorizedAccessException)
+    {
+        ctx.Response.StatusCode = 401;
+        ctx.Response.ContentType = "application/json";
+        await ctx.Response.WriteAsync(
+            "{\"data\":null,\"meta\":{\"requestId\":\"\",\"generatedAt\":\"\",\"cacheStatus\":\"miss\"}," +
+            "\"errors\":[{\"code\":\"UNAUTHORIZED\",\"message\":\"Authentication required.\"}]}");
+    }
+});
+app.UseAuthentication();
+app.UseAuthorization();
 
 var camelJson = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 var caseInsensitive = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
@@ -52,6 +95,49 @@ static Envelope<object?> Fail(string code, string message) => new(
     [new ApiError(code, message)]);
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
+// ---------------------------------------------------------------- Auth
+app.MapPost("/v1/auth/register", async (RegisterRequest req, UserRepo users, RefreshTokenRepo refresh, JwtService jwt, AuditRepo audit, Db db) =>
+{
+    if (!db.Configured) return Results.Json(Fail("NO_DB", "User store not configured."), statusCode: 503);
+    if (string.IsNullOrWhiteSpace(req.Email) || (req.Password?.Length ?? 0) < 8)
+        return Results.Json(Fail("INVALID", "A valid email and an 8+ character password are required."), statusCode: 400);
+    if (await users.GetAuthByEmail(req.Email) is not null)
+        return Results.Json(Fail("EMAIL_TAKEN", "That email is already registered."), statusCode: 409);
+
+    var userId = "usr_" + Guid.NewGuid().ToString("N")[..12];
+    await users.CreateUser(userId, req.Email, string.IsNullOrWhiteSpace(req.DisplayName) ? "Player" : req.DisplayName, PasswordHasher.Hash(req.Password!));
+    await users.UpsertPreferences(userId, new UserPreferencesRow("decimal", "home-kit", "default", true, true, false));
+    await audit.Log(userId, "register", "user", userId);
+    return Results.Ok(Ok(await IssueAuth(userId, req.Email, req.DisplayName, users, refresh, jwt)));
+});
+
+app.MapPost("/v1/auth/login", async (LoginRequest req, UserRepo users, RefreshTokenRepo refresh, JwtService jwt, Db db) =>
+{
+    if (!db.Configured) return Results.Json(Fail("NO_DB", "User store not configured."), statusCode: 503);
+    var u = await users.GetAuthByEmail(req.Email);
+    if (u is null || !PasswordHasher.Verify(req.Password, u.PasswordHash))
+        return Results.Json(Fail("INVALID_CREDENTIALS", "Email or password is incorrect."), statusCode: 401);
+    return Results.Ok(Ok(await IssueAuth(u.UserId, u.Email, u.DisplayName, users, refresh, jwt)));
+});
+
+app.MapPost("/v1/auth/refresh", async (RefreshRequest req, UserRepo users, RefreshTokenRepo refresh, JwtService jwt, Db db) =>
+{
+    if (!db.Configured) return Results.Json(Fail("NO_DB", "User store not configured."), statusCode: 503);
+    var hash = JwtService.HashRefresh(req.RefreshToken);
+    var userId = await refresh.FindValidUserId(hash);
+    if (userId is null) return Results.Json(Fail("INVALID_REFRESH", "Refresh token invalid or expired."), statusCode: 401);
+    await refresh.Revoke(hash); // rotate
+    var u = await users.GetUser(userId);
+    return Results.Ok(Ok(await IssueAuth(userId, u?.Email, u?.DisplayName ?? "Player", users, refresh, jwt)));
+});
+
+app.MapPost("/v1/auth/logout", async (RefreshRequest req, RefreshTokenRepo refresh, Db db) =>
+{
+    if (!db.Configured) return Results.Json(Fail("NO_DB", "User store not configured."), statusCode: 503);
+    await refresh.Revoke(JwtService.HashRefresh(req.RefreshToken));
+    return Results.Ok(Ok(new { loggedOut = true }));
+});
 
 // ---------------------------------------------------------------- Home / Matches
 app.MapGet("/v1/mobile/home", async (HttpContext ctx, MlClient ml, ResponseCache cache, UserRepo users, Db db) =>
@@ -247,6 +333,17 @@ app.MapPut("/v1/users/me/preferences", async (HttpContext ctx, UserPreferencesDt
 });
 
 app.Run();
+
+static async Task<AuthResponse> IssueAuth(string userId, string? email, string? displayName, UserRepo users, RefreshTokenRepo refresh, JwtService jwt)
+{
+    var (access, exp) = jwt.CreateAccessToken(userId, email);
+    var refreshToken = JwtService.NewRefreshToken();
+    await refresh.Insert("rt_" + Guid.NewGuid().ToString("N")[..12], userId, JwtService.HashRefresh(refreshToken), DateTime.UtcNow.AddDays(jwt.RefreshDays));
+    var p = await users.GetPreferences(userId) ?? new UserPreferencesRow("decimal", "home-kit", "default", true, true, false);
+    var profile = new UserProfileDto(userId, displayName ?? "Player", email,
+        new UserPreferencesDto(p.OddsFormat, p.KitId, p.TextSize, p.NotifyPredictions, p.NotifyResults, p.NotifyNews));
+    return new AuthResponse(access, refreshToken, exp.ToString("o"), profile);
+}
 
 static List<NewsItemDto> SampleNews() =>
 [

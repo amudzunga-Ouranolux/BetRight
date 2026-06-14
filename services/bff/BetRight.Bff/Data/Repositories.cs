@@ -5,6 +5,8 @@ namespace BetRight.Bff.Data;
 // Row shapes (Dapper maps snake_case columns via MatchNamesWithUnderscores).
 public record UserRow(string UserId, string? Email, string DisplayName);
 
+public record UserAuthRow(string UserId, string? Email, string DisplayName, string? PasswordHash);
+
 public record UserPreferencesRow(
     string OddsFormat, string KitId, string TextSize,
     bool NotifyPredictions, bool NotifyResults, bool NotifyNews);
@@ -24,6 +26,38 @@ public class UserRepo(Db db)
         using var c = db.Open();
         return await c.QuerySingleOrDefaultAsync<UserRow>(
             "select user_id, email, display_name from users where user_id = @userId", new { userId });
+    }
+
+    public async Task<UserAuthRow?> GetAuthByEmail(string email)
+    {
+        using var c = db.Open();
+        return await c.QuerySingleOrDefaultAsync<UserAuthRow>(
+            "select user_id, email, display_name, password_hash from users where lower(email) = lower(@email)",
+            new { email });
+    }
+
+    public async Task CreateUser(string userId, string email, string displayName, string passwordHash)
+    {
+        using var c = db.Open();
+        await c.ExecuteAsync(
+            @"insert into users (user_id, email, display_name, password_hash, created_at)
+              values (@userId, @email, @displayName, @passwordHash, now())",
+            new { userId, email, displayName, passwordHash });
+    }
+
+    public async Task DeleteUser(string userId)
+    {
+        using var c = db.Open();
+        // Children first (no ON DELETE CASCADE in the baseline schema).
+        await c.ExecuteAsync(
+            @"delete from refresh_tokens where user_id=@userId;
+              delete from saved_predictions where user_id=@userId;
+              delete from notifications where user_id=@userId;
+              delete from user_favourites where user_id=@userId;
+              delete from user_preferences where user_id=@userId;
+              delete from audit_logs where user_id=@userId;
+              delete from users where user_id=@userId;",
+            new { userId });
     }
 
     public async Task<UserPreferencesRow?> GetPreferences(string userId)
@@ -123,5 +157,33 @@ public class AuditRepo(Db db)
             @"insert into audit_logs (user_id, action, entity, entity_id, created_at)
               values (@userId, @action, @entity, @entityId, now())",
             new { userId, action, entity, entityId });
+    }
+}
+
+public class RefreshTokenRepo(Db db)
+{
+    public async Task Insert(string id, string userId, string tokenHash, DateTime expiresAt)
+    {
+        using var c = db.Open();
+        await c.ExecuteAsync(
+            @"insert into refresh_tokens (id, user_id, token_hash, expires_at, revoked, created_at)
+              values (@id, @userId, @tokenHash, @expiresAt, false, now())",
+            new { id, userId, tokenHash, expiresAt });
+    }
+
+    public async Task<string?> FindValidUserId(string tokenHash)
+    {
+        using var c = db.Open();
+        return await c.QuerySingleOrDefaultAsync<string?>(
+            @"select user_id from refresh_tokens
+              where token_hash=@tokenHash and revoked=false and expires_at > now()",
+            new { tokenHash });
+    }
+
+    public async Task Revoke(string tokenHash)
+    {
+        using var c = db.Open();
+        await c.ExecuteAsync(
+            "update refresh_tokens set revoked=true where token_hash=@tokenHash", new { tokenHash });
     }
 }
