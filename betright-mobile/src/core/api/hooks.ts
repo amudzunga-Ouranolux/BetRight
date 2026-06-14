@@ -3,7 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import type { Fixture } from '@/models/fixture.model';
 import type { MatchPrediction } from '@/models/prediction.model';
 
-import { getData, mockGet, postData } from './client';
+import type { TeamSummary } from '@/models/team.model';
+
+import { deleteData, getData, postData } from './client';
 import {
   mockFixtures,
   mockMatchPrediction,
@@ -160,8 +162,8 @@ export function predictManual(
 export function useFavouritesHub() {
   return useQuery({
     queryKey: ['favourites-hub'],
-    queryFn: async () => {
-      const res = await mockGet<FavouritesHub>(() => ({
+    queryFn: () =>
+      getData<FavouritesHub>('/v1/mobile/favourites', () => ({
         nextUp: mockFixtures[1],
         predictions: mockFixtures.slice(1, 4),
         updates: mockFavUpdates,
@@ -170,8 +172,143 @@ export function useFavouritesHub() {
         predictionsReady: 5,
         alerts: mockFavUpdates.length,
         savedPicks: 3,
-      }));
-      return res.data;
-    },
+      })),
+  });
+}
+
+// --- Team / competition profiles -------------------------------------------
+
+export interface TeamProfileForm {
+  attackStrength: number;
+  defenceStrength: number;
+  matchesSampled: number;
+  goalsScoredAvg: number;
+  goalsConcededAvg: number;
+  recentResults: string[];
+}
+
+export interface TeamProfile {
+  team: TeamSummary;
+  competitionId?: string;
+  competitionName?: string;
+  elo: number;
+  form: TeamProfileForm;
+  upcoming: Fixture[];
+}
+
+export function useTeamProfile(teamId: string) {
+  return useQuery({
+    queryKey: ['team', teamId],
+    queryFn: () =>
+      getData<TeamProfile>(`/v1/teams/${teamId}`, () => {
+        const fixtures = mockFixtures.filter(
+          (f) => f.homeTeam.teamId === teamId || f.awayTeam.teamId === teamId,
+        );
+        const team = fixtures[0]?.homeTeam ?? mockFixtures[0].homeTeam;
+        return {
+          team,
+          competitionId: fixtures[0]?.competitionId,
+          competitionName: fixtures[0]?.competitionName,
+          elo: 1600,
+          form: {
+            attackStrength: 1.8,
+            defenceStrength: 1.0,
+            matchesSampled: 12,
+            goalsScoredAvg: 1.8,
+            goalsConcededAvg: 1.0,
+            recentResults: ['W', 'W', 'D', 'W', 'L'],
+          },
+          upcoming: fixtures,
+        };
+      }),
+    enabled: !!teamId,
+  });
+}
+
+export interface StandingRow {
+  team: TeamSummary;
+  elo: number;
+  matchesPlayed: number;
+}
+
+export interface CompetitionProfile {
+  competitionId: string;
+  name: string;
+  table: StandingRow[];
+  upcoming: Fixture[];
+}
+
+export function useCompetitionProfile(competitionId: string) {
+  return useQuery({
+    queryKey: ['competition', competitionId],
+    queryFn: () =>
+      getData<CompetitionProfile>(`/v1/competitions/${competitionId}`, () => {
+        const fixtures = mockFixtures.filter((f) => f.competitionId === competitionId);
+        return {
+          competitionId,
+          name: fixtures[0]?.competitionName ?? competitionId,
+          table: fixtures.map((f) => ({ team: f.homeTeam, elo: 1550, matchesPlayed: 20 })),
+          upcoming: fixtures,
+        };
+      }),
+    enabled: !!competitionId,
+  });
+}
+
+// --- Saved predictions ------------------------------------------------------
+
+export interface SavedPrediction {
+  id: string;
+  fixtureId: string;
+  savedAt: string;
+  prediction: MatchPrediction;
+}
+
+export function useSavedPredictions() {
+  return useQuery({
+    queryKey: ['saved-predictions'],
+    queryFn: () => getData<SavedPrediction[]>('/v1/users/me/saved-predictions', () => []),
+  });
+}
+
+export function savePrediction(fixtureId: string) {
+  return postData<SavedPrediction>('/v1/users/me/saved-predictions', { fixtureId }, () => ({
+    id: `saved_${fixtureId}`,
+    fixtureId,
+    savedAt: new Date().toISOString(),
+    prediction: mockMatchPrediction(fixtureId),
+  }));
+}
+
+export function unsavePrediction(id: string) {
+  return deleteData<{ deleted: boolean }>(`/v1/users/me/saved-predictions/${id}`, () => ({ deleted: true }));
+}
+
+// --- Notifications ----------------------------------------------------------
+
+export interface NotificationItem {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  fixtureId?: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export function useNotifications() {
+  return useQuery({
+    queryKey: ['notifications'],
+    queryFn: () =>
+      getData<NotificationItem[]>('/v1/notifications', () =>
+        mockFavUpdates.map((u) => ({
+          id: u.id,
+          kind: u.kind,
+          title: u.title,
+          body: u.detail,
+          read: false,
+          createdAt: new Date().toISOString(),
+        })),
+      ),
   });
 }

@@ -84,7 +84,7 @@ export function HomeScreen() {
         </Pressable>
         <Image source={kitAssets[kitId].logoFull} style={{ width: logoW, height: logoW / kitAssets[kitId].logoAR }} contentFit="contain" />
         <Box flexDirection="row" alignItems="center" gap="sm">
-          <Pressable accessibilityRole="button" accessibilityLabel="Notifications" hitSlop={8}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Notifications" hitSlop={8} onPress={() => router.push('/notifications' as never)}>
             <Bell size={r.s(20)} color={theme.colors.textPrimary} strokeWidth={2} />
           </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="Profile" onPress={() => router.push('/(tabs)/profile')}>

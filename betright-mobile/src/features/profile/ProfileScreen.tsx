@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import {
   Palette,
   Bell,
+  Bookmark,
   SlidersHorizontal,
   Shield,
   CircleHelp,
@@ -30,8 +31,9 @@ interface Row {
 }
 
 const ROWS: Row[] = [
+  { icon: Bookmark, label: 'Saved Predictions', sublabel: 'Your saved picks', href: '/saved' },
   { icon: Palette, label: 'Theme', sublabel: 'Choose your kit', href: '/settings/theme' },
-  { icon: Bell, label: 'Notifications', sublabel: 'Alerts and reminders' },
+  { icon: Bell, label: 'Notifications', sublabel: 'Alerts and reminders', href: '/notifications' },
   { icon: SlidersHorizontal, label: 'Prediction Preferences' },
   { icon: CreditCard, label: 'Subscription', sublabel: 'Free plan' },
   { icon: Shield, label: 'Privacy & Responsible Use' },

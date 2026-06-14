@@ -104,3 +104,34 @@ class ModelPerformanceOut(BaseModel):
     brier_score: float | None = None
     log_loss: float | None = None
     sample_size: int
+
+
+class TeamFormOut(BaseModel):
+    attack_strength: float
+    defence_strength: float
+    matches_sampled: int
+    goals_scored_avg: float
+    goals_conceded_avg: float
+    recent_results: list[str]
+
+
+class TeamProfileOut(BaseModel):
+    team: TeamOut
+    competition_id: str | None = None
+    competition_name: str | None = None
+    elo: float
+    form: TeamFormOut
+    upcoming: list[PredictionOut]
+
+
+class StandingRow(BaseModel):
+    team: TeamOut
+    elo: float
+    matches_played: int
+
+
+class CompetitionProfileOut(BaseModel):
+    competition_id: str
+    name: str
+    table: list[StandingRow]
+    upcoming: list[PredictionOut]

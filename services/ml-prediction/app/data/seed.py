@@ -124,6 +124,28 @@ def seed() -> dict[str, int]:
             ))
             counts["fixtures"] += 1
 
+        # Dev user + favourites + sample notifications (the JWT seam uses this id).
+        session.merge(models.User(user_id="dev-user", email="dev@betright.local", display_name="Adriano"))
+        session.merge(models.UserPreference(user_id="dev-user"))
+        for kind, ref in [("team", "mci"), ("team", "rma"), ("league", "epl")]:
+            exists = (
+                session.query(models.UserFavourite)
+                .filter_by(user_id="dev-user", kind=kind, ref_id=ref)
+                .first()
+            )
+            if not exists:
+                session.add(models.UserFavourite(user_id="dev-user", kind=kind, ref_id=ref))
+        for i, (kind, title, body, fx) in enumerate([
+            ("prediction", "New prediction ready", "Man City v Man United is live in your feed.", "seed_fx_1"),
+            ("result", "Result graded", "Your saved pick was evaluated.", None),
+            ("news", "Squad rotation expected", "Several changes likely after a busy schedule.", None),
+        ]):
+            session.merge(models.Notification(
+                id=f"seed_notif_{i+1}", user_id="dev-user", kind=kind,
+                title=title, body=body, fixture_id=fx, read=(i > 1),
+            ))
+        counts["dev_user"] = 1
+
     with session_scope() as session:
         replayed = bootstrap_ratings(session)
     counts["ratings_bootstrapped"] = replayed

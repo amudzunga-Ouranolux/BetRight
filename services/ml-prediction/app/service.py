@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from .engine.form import compute_form
 from .engine.predictor import MODEL_VERSION, PredictionResult, predict
 from .schemas import (
+    CompetitionProfileOut,
     ConfidenceOut,
     ExpectedGoalsOut,
     ExplanationOut,
@@ -23,7 +24,10 @@ from .schemas import (
     PredictionOut,
     ReasonOut,
     ScorelineOut,
+    StandingRow,
+    TeamFormOut,
     TeamOut,
+    TeamProfileOut,
 )
 from .store import models, repo
 
@@ -251,6 +255,142 @@ def _to_out(
             risk_factors=[ReasonOut(**r.__dict__) for r in e.risk_factors],
         ),
         feature_snapshot_id=result.feature_snapshot["feature_snapshot_id"],
+    )
+
+
+def get_or_create_prediction(session: Session, fixture_id: str) -> PredictionOut:
+    """Serve the stored latest prediction; compute + persist on a miss.
+
+    This is the read path: the batch job and scheduler keep predictions fresh, so
+    most reads are served straight from the DB (immutable, audit-friendly) rather
+    than recomputed each call.
+    """
+    existing = repo.latest_prediction(session, fixture_id)
+    if existing is not None:
+        return prediction_to_out(session, existing)
+    # Miss: compute, persist, then serve the stored row for a consistent id.
+    predict_fixture(session, fixture_id, persist=True)
+    stored = repo.latest_prediction(session, fixture_id)
+    if stored is None:  # pragma: no cover - persistence just succeeded
+        raise LookupError(f"failed to persist prediction for {fixture_id}")
+    return prediction_to_out(session, stored)
+
+
+def prediction_to_out(session: Session, row: models.Prediction) -> PredictionOut:
+    """Rebuild the API response from a stored prediction row + fixture context."""
+    fixture = repo.get_fixture(session, row.fixture_id)
+    if fixture is None:
+        raise LookupError(f"fixture not found for prediction: {row.fixture_id}")
+    home = repo.get_team(session, fixture.home_team_id)
+    away = repo.get_team(session, fixture.away_team_id)
+    competition = repo.get_competition(session, fixture.competition_id)
+    m = row.markets_json
+    e = row.explanation_json
+
+    return PredictionOut(
+        prediction_id=row.prediction_id,
+        fixture_id=row.fixture_id,
+        model_version=row.model_version,
+        generated_at=_aware(row.created_at).isoformat(),
+        competition_id=competition.competition_id if competition else None,
+        competition_name=competition.name if competition else None,
+        kickoff_time=_aware(fixture.kickoff_time).isoformat(),
+        home_team=TeamOut(team_id=home.team_id, name=home.name, short_name=home.short_name),
+        away_team=TeamOut(team_id=away.team_id, name=away.name, short_name=away.short_name),
+        predicted_result=_result_from(row),
+        outcome=OutcomeOut(
+            home_win=row.home_win_probability,
+            draw=row.draw_probability,
+            away_win=row.away_win_probability,
+        ),
+        expected_goals=ExpectedGoalsOut(home_xg=row.home_xg, away_xg=row.away_xg),
+        likely_score=row.likely_score or "",
+        likely_scorelines=[ScorelineOut(**s) for s in m.get("scorelines", [])],
+        markets=MarketsOut(
+            over15=m["over15"], over25=m["over25"], over35=m["over35"], under25=m["under25"],
+            btts_yes=m["btts_yes"], btts_no=m["btts_no"],
+            clean_sheet_home=m["clean_sheet_home"], clean_sheet_away=m["clean_sheet_away"],
+        ),
+        confidence=ConfidenceOut(score=int(row.confidence_score), label=row.confidence_label),
+        data_quality_score=row.data_quality_score,
+        explanation=ExplanationOut(
+            headline=e["headline"],
+            summary=e["summary"],
+            key_reasons=[ReasonOut(**r) for r in e.get("key_reasons", [])],
+            risk_factors=[ReasonOut(**r) for r in e.get("risk_factors", [])],
+        ),
+        feature_snapshot_id=row.feature_snapshot_id,
+    )
+
+
+def _result_from(row: models.Prediction) -> str:
+    trio = [
+        ("home_win", row.home_win_probability),
+        ("draw", row.draw_probability),
+        ("away_win", row.away_win_probability),
+    ]
+    trio.sort(key=lambda t: t[1], reverse=True)
+    return trio[0][0]
+
+
+def team_profile(session: Session, team_id: str) -> TeamProfileOut:
+    team = repo.get_team(session, team_id)
+    if team is None:
+        raise LookupError(f"team not found: {team_id}")
+    competition = repo.get_competition(session, team.competition_id) if team.competition_id else None
+    base_rate = competition.base_goal_rate if competition else 1.35
+    as_of = _now()
+    matches = repo.matches_for_teams(session, [team_id], as_of)
+    form = compute_form(team_id, matches, as_of, base_rate)
+    rating = repo.get_rating(session, team_id)
+
+    upcoming = [
+        get_or_create_prediction(session, fx.fixture_id)
+        for fx in repo.team_upcoming_fixtures(session, team_id)
+    ]
+    return TeamProfileOut(
+        team=TeamOut(team_id=team.team_id, name=team.name, short_name=team.short_name),
+        competition_id=competition.competition_id if competition else None,
+        competition_name=competition.name if competition else None,
+        elo=round(rating.elo, 1) if rating else DEFAULT_ELO,
+        form=TeamFormOut(
+            attack_strength=form.attack_strength,
+            defence_strength=form.defence_strength,
+            matches_sampled=form.matches_sampled,
+            goals_scored_avg=form.goals_scored_avg,
+            goals_conceded_avg=form.goals_conceded_avg,
+            recent_results=form.recent_results,
+        ),
+        upcoming=upcoming,
+    )
+
+
+def competition_profile(session: Session, competition_id: str) -> CompetitionProfileOut:
+    competition = repo.get_competition(session, competition_id)
+    if competition is None:
+        raise LookupError(f"competition not found: {competition_id}")
+
+    rows = []
+    for team in repo.competition_teams(session, competition_id):
+        rating = repo.get_rating(session, team.team_id)
+        rows.append(
+            StandingRow(
+                team=TeamOut(team_id=team.team_id, name=team.name, short_name=team.short_name),
+                elo=round(rating.elo, 1) if rating else DEFAULT_ELO,
+                matches_played=rating.matches_played if rating else 0,
+            )
+        )
+    rows.sort(key=lambda r: r.elo, reverse=True)
+
+    upcoming = [
+        get_or_create_prediction(session, fx.fixture_id)
+        for fx in repo.competition_upcoming(session, competition_id)
+    ]
+    return CompetitionProfileOut(
+        competition_id=competition.competition_id,
+        name=competition.name,
+        table=rows,
+        upcoming=upcoming,
     )
 
 

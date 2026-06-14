@@ -35,6 +35,38 @@ def upcoming_fixtures(session: Session, limit: int = 200) -> list[models.Fixture
     return list(session.scalars(stmt))
 
 
+def team_upcoming_fixtures(session: Session, team_id: str, limit: int = 10) -> list[models.Fixture]:
+    stmt = (
+        select(models.Fixture)
+        .where(
+            models.Fixture.status == "scheduled",
+            (models.Fixture.home_team_id == team_id) | (models.Fixture.away_team_id == team_id),
+        )
+        .order_by(models.Fixture.kickoff_time)
+        .limit(limit)
+    )
+    return list(session.scalars(stmt))
+
+
+def competition_teams(session: Session, competition_id: str) -> list[models.Team]:
+    stmt = select(models.Team).where(models.Team.competition_id == competition_id)
+    return list(session.scalars(stmt))
+
+
+def competition_upcoming(session: Session, competition_id: str, limit: int = 20) -> list[models.Fixture]:
+    stmt = (
+        select(models.Fixture)
+        .where(models.Fixture.status == "scheduled", models.Fixture.competition_id == competition_id)
+        .order_by(models.Fixture.kickoff_time)
+        .limit(limit)
+    )
+    return list(session.scalars(stmt))
+
+
+def get_rating(session: Session, team_id: str) -> models.TeamRating | None:
+    return session.get(models.TeamRating, team_id)
+
+
 def matches_for_teams(
     session: Session, team_ids: list[str], before: datetime
 ) -> list[HistMatch]:

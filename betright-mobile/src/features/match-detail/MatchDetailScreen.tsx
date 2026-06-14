@@ -6,7 +6,7 @@ import { ChevronLeft, Share2, Sparkles, Star, Trophy } from 'lucide-react-native
 import { Box, useTheme } from '@/core/theme/restyle';
 import { useResponsive } from '@/core/theme/responsive';
 import { AWAY_ACCENT } from '@/core/theme/palette';
-import { useMatchDetail, type MatchStatRow } from '@/core/api/hooks';
+import { useMatchDetail, savePrediction, unsavePrediction, type MatchStatRow } from '@/core/api/hooks';
 import type { Fixture } from '@/models/fixture.model';
 import type { MatchPrediction } from '@/models/prediction.model';
 import { formatKickoffTime } from '@/core/utils/datetime';
@@ -30,8 +30,18 @@ export function MatchDetailScreen({ fixtureId }: { fixtureId: string }) {
   const theme = useTheme();
   const r = useResponsive();
   const [tab, setTab] = useState<Tab>('overview');
-  const [fav, setFav] = useState(true);
+  const [savedId, setSavedId] = useState<string | null>(null);
   const { data, isLoading, isError, refetch } = useMatchDetail(fixtureId);
+
+  const toggleSave = async () => {
+    if (savedId) {
+      await unsavePrediction(savedId);
+      setSavedId(null);
+    } else {
+      const s = await savePrediction(fixtureId);
+      setSavedId(s.id);
+    }
+  };
 
   return (
     <Screen edges={['top']}>
@@ -50,12 +60,12 @@ export function MatchDetailScreen({ fixtureId }: { fixtureId: string }) {
           <Pressable hitSlop={8} accessibilityRole="button" accessibilityLabel="Share">
             <Share2 size={r.s(16)} color={theme.colors.textPrimary} strokeWidth={2} />
           </Pressable>
-          <Pressable onPress={() => setFav((f) => !f)} hitSlop={8} accessibilityRole="button" accessibilityLabel="Favourite">
+          <Pressable onPress={toggleSave} hitSlop={8} accessibilityRole="button" accessibilityLabel="Save prediction" accessibilityState={{ selected: !!savedId }}>
             <Star
               size={r.s(18)}
               color={theme.colors.primary}
               strokeWidth={2}
-              fill={fav ? theme.colors.primary : 'transparent'}
+              fill={savedId ? theme.colors.primary : 'transparent'}
             />
           </Pressable>
         </Box>

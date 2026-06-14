@@ -42,4 +42,20 @@ public class MlClient(HttpClient http)
 
     public async Task<MlModelPerformance?> ModelPerformanceAsync(CancellationToken ct = default)
         => await http.GetFromJsonAsync<MlModelPerformance>("/internal/models/performance", Json, ct);
+
+    public async Task<MlTeamProfile?> TeamProfileAsync(string teamId, CancellationToken ct = default)
+    {
+        var resp = await http.GetAsync($"/internal/teams/{teamId}", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<MlTeamProfile>(Json, ct);
+    }
+
+    public async Task<MlCompetitionProfile?> CompetitionProfileAsync(string competitionId, CancellationToken ct = default)
+    {
+        var resp = await http.GetAsync($"/internal/competitions/{competitionId}", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<MlCompetitionProfile>(Json, ct);
+    }
 }

@@ -70,8 +70,8 @@ export function FavouritesScreen() {
       ) : (
         <ScrollView contentContainerStyle={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.lg }} showsVerticalScrollIndicator={false}>
           {tab === 'overview' && <Overview data={data} />}
-          {tab === 'teams' && data.teams.map((t, i) => <TeamCard key={t.id} team={t} top={i === 0} />)}
-          {tab === 'leagues' && data.leagues.map((l, i) => <LeagueCard key={l.id} league={l} top={i === 0} />)}
+          {tab === 'teams' && data.teams.map((t, i) => <TeamCard key={t.id} team={t} top={i === 0} onPress={() => router.push(`/team/${t.id}` as never)} />)}
+          {tab === 'leagues' && data.leagues.map((l, i) => <LeagueCard key={l.id} league={l} top={i === 0} onPress={() => router.push(`/competition/${l.id}` as never)} />)}
           {tab === 'alerts' && (
             <GlassCard overflow="hidden">
               {data.updates.map((u, i) => (
@@ -270,11 +270,11 @@ function FormPills({ form }: { form: FormResult[] }) {
   );
 }
 
-function TeamCard({ team, top }: { team: FavTeam; top: boolean }) {
+function TeamCard({ team, top, onPress }: { team: FavTeam; top: boolean; onPress: () => void }) {
   const theme = useTheme();
   const r = useResponsive();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={team.name} style={{ marginTop: top ? 0 : theme.spacing.xs }}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={team.name} style={{ marginTop: top ? 0 : theme.spacing.xs }}>
       <GlassCard padding="md">
         <Box flexDirection="row" alignItems="center" gap="sm">
           <TeamCrest name={team.name} shortName={team.shortName} size={r.s(30)} />
@@ -293,11 +293,11 @@ function TeamCard({ team, top }: { team: FavTeam; top: boolean }) {
   );
 }
 
-function LeagueCard({ league, top }: { league: FavLeague; top: boolean }) {
+function LeagueCard({ league, top, onPress }: { league: FavLeague; top: boolean; onPress: () => void }) {
   const theme = useTheme();
   const r = useResponsive();
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={league.name} style={{ marginTop: top ? 0 : theme.spacing.xs }}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={league.name} style={{ marginTop: top ? 0 : theme.spacing.xs }}>
       <GlassCard padding="md">
         <Box flexDirection="row" alignItems="center" justifyContent="space-between">
           <BRText style={{ fontSize: r.s(11), fontFamily: theme.fonts.bold, color: theme.colors.textPrimary }}>{league.name}</BRText>

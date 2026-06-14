@@ -79,3 +79,30 @@ public record MlModelPerformance(
     [property: JsonPropertyName("brier_score")] double? BrierScore,
     [property: JsonPropertyName("log_loss")] double? LogLoss,
     [property: JsonPropertyName("sample_size")] int SampleSize);
+
+public record MlTeamForm(
+    [property: JsonPropertyName("attack_strength")] double AttackStrength,
+    [property: JsonPropertyName("defence_strength")] double DefenceStrength,
+    [property: JsonPropertyName("matches_sampled")] int MatchesSampled,
+    [property: JsonPropertyName("goals_scored_avg")] double GoalsScoredAvg,
+    [property: JsonPropertyName("goals_conceded_avg")] double GoalsConcededAvg,
+    [property: JsonPropertyName("recent_results")] List<string> RecentResults);
+
+public record MlTeamProfile(
+    [property: JsonPropertyName("team")] MlTeam Team,
+    [property: JsonPropertyName("competition_id")] string? CompetitionId,
+    [property: JsonPropertyName("competition_name")] string? CompetitionName,
+    [property: JsonPropertyName("elo")] double Elo,
+    [property: JsonPropertyName("form")] MlTeamForm Form,
+    [property: JsonPropertyName("upcoming")] List<MlPrediction> Upcoming);
+
+public record MlStandingRow(
+    [property: JsonPropertyName("team")] MlTeam Team,
+    [property: JsonPropertyName("elo")] double Elo,
+    [property: JsonPropertyName("matches_played")] int MatchesPlayed);
+
+public record MlCompetitionProfile(
+    [property: JsonPropertyName("competition_id")] string CompetitionId,
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("table")] List<MlStandingRow> Table,
+    [property: JsonPropertyName("upcoming")] List<MlPrediction> Upcoming);

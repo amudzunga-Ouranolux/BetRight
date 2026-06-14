@@ -11,8 +11,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy.types import JSON
+from sqlalchemy.types import JSON as _JSON
+
+# JSONB on Postgres (queryable), plain JSON on SQLite (dev/tests) — one column type
+# that adapts to the dialect, so there's no schema drift between the two.
+JSONFlex = _JSON().with_variant(JSONB, "postgresql")
 
 
 def _now() -> datetime:
@@ -118,8 +123,8 @@ class FeatureSnapshot(Base):
     fixture_id: Mapped[str] = mapped_column(String)
     as_of: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     data_quality_score: Mapped[float] = mapped_column(Float)
-    features_json: Mapped[dict] = mapped_column(JSON)
-    source_manifest: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    features_json: Mapped[dict] = mapped_column(JSONFlex)
+    source_manifest: Mapped[dict | None] = mapped_column(JSONFlex, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
@@ -137,8 +142,8 @@ class Prediction(Base):
     confidence_score: Mapped[float] = mapped_column(Float)
     confidence_label: Mapped[str] = mapped_column(String)
     data_quality_score: Mapped[float] = mapped_column(Float)
-    markets_json: Mapped[dict] = mapped_column(JSON)
-    explanation_json: Mapped[dict] = mapped_column(JSON)
+    markets_json: Mapped[dict] = mapped_column(JSONFlex)
+    explanation_json: Mapped[dict] = mapped_column(JSONFlex)
     feature_snapshot_id: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
@@ -155,3 +160,69 @@ class PredictionResult(Base):
     brier_score: Mapped[float] = mapped_column(Float)
     log_loss: Mapped[float] = mapped_column(Float)
     evaluated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+# ---------------------------------------------------------------------------
+# User domain. Owned by the BFF at runtime (Dapper), but defined here so Alembic
+# is the single schema authority across both services.
+# ---------------------------------------------------------------------------
+
+class User(Base):
+    __tablename__ = "users"
+    user_id: Mapped[str] = mapped_column(String, primary_key=True)
+    email: Mapped[str | None] = mapped_column(String, nullable=True)
+    display_name: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class UserPreference(Base):
+    __tablename__ = "user_preferences"
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.user_id"), primary_key=True)
+    odds_format: Mapped[str] = mapped_column(String, default="decimal")
+    kit_id: Mapped[str] = mapped_column(String, default="home-kit")
+    text_size: Mapped[str] = mapped_column(String, default="default")
+    notify_predictions: Mapped[bool] = mapped_column(Boolean, default=True)
+    notify_results: Mapped[bool] = mapped_column(Boolean, default=True)
+    notify_news: Mapped[bool] = mapped_column(Boolean, default=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class UserFavourite(Base):
+    __tablename__ = "user_favourites"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.user_id"), index=True)
+    kind: Mapped[str] = mapped_column(String)        # 'team' | 'league'
+    ref_id: Mapped[str] = mapped_column(String)      # team_id or competition_id
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class SavedPrediction(Base):
+    __tablename__ = "saved_predictions"
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.user_id"), index=True)
+    fixture_id: Mapped[str] = mapped_column(String)
+    snapshot_json: Mapped[dict] = mapped_column(JSONFlex)  # MatchPrediction at save time
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.user_id"), index=True)
+    kind: Mapped[str] = mapped_column(String)        # prediction|result|news|alert
+    title: Mapped[str] = mapped_column(String)
+    body: Mapped[str] = mapped_column(String)
+    fixture_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    read: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    action: Mapped[str] = mapped_column(String)
+    entity: Mapped[str | None] = mapped_column(String, nullable=True)
+    entity_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    meta_json: Mapped[dict | None] = mapped_column(JSONFlex, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

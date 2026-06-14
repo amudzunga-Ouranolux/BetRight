@@ -9,11 +9,13 @@ services:
       POSTGRES_PASSWORD: betright
       POSTGRES_DB: betright
     ports:
-      - "5432:5432"
+      # Host 5433 to avoid clashing with a local Postgres on 5432. Inside the
+      # compose network services still use postgres:5432.
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      # migrations run on first boot (alphabetical order)
-      - ../db/migrations:/docker-entrypoint-initdb.d:ro
+      # Schema is managed by Alembic (the ML service runs `alembic upgrade head`
+      # on startup), not by initdb SQL.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U betright"]
       interval: 5s

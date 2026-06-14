@@ -17,6 +17,11 @@ class Settings:
             "FOOTBALL_DATA_BASE_URL", "https://api.football-data.org/v4"
         )
         self.port: int = int(os.getenv("PORT", "8001"))
+        # Background scheduler (batch predict + post-match). Off by default so dev
+        # reloads and tests don't spawn timers; compose turns it on.
+        self.scheduler_enabled: bool = os.getenv("SCHEDULER_ENABLED", "false").lower() == "true"
+        self.predict_interval_minutes: int = int(os.getenv("PREDICT_INTERVAL_MINUTES", "60"))
+        self.postmatch_interval_minutes: int = int(os.getenv("POSTMATCH_INTERVAL_MINUTES", "30"))
 
 
 @lru_cache

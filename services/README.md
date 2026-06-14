@@ -1,17 +1,20 @@
 # BetRight Backend — Prediction & ML
 
-The prediction stack behind the mobile app. Two services plus a Postgres database:
+The prediction stack behind the mobile app. Two services plus a Postgres database + Redis:
 
 ```
 RN app ──► .NET BFF (/v1/*) ──► Python ML service (/internal/*) ──► Postgres
- camelCase    envelope, cache,        Dixon-Coles + Elo + form,        predictions,
- DTOs         snake→camel mapping     confidence, rule explanations     ratings, results
-                                      ▲
-              data ingest ───────────┘ football-data.org → competitions/teams/fixtures/matches
+ camelCase    envelope, Redis cache,    Dixon-Coles + Elo + form,        predictions, ratings,
+ DTOs         snake→camel mapping,      confidence, rule explanations,    results, users, saved,
+              Dapper user-domain        store-and-serve + scheduler       favourites, notifications
+                                        ▲
+              data ingest ──────────────┘ football-data.org → competitions/teams/fixtures/matches
               post-match loop: results → Brier/log-loss → Elo update
 ```
 
-The app never calls the ML service directly — only the BFF does (architecture guardrail).
+The app never calls the ML service directly — only the BFF does (architecture guardrail). The
+**ML service** owns the prediction-domain tables; the **BFF** owns the user-domain tables (Dapper)
+in the same Postgres. **Alembic** (in the ML service) is the single schema authority for both.
 
 ## What's built (formula-engine milestone)
 
@@ -30,24 +33,47 @@ The app never calls the ML service directly — only the BFF does (architecture 
 
 ## Run it locally (offline, no API key)
 
+SQLite path — no Docker needed (user-domain endpoints need Postgres, see below):
+
 ```bash
 cd services/ml-prediction
-pip install -e .                      # or: pip install fastapi uvicorn pydantic sqlalchemy httpx
+pip install -e .                      # fastapi uvicorn pydantic sqlalchemy alembic apscheduler httpx
 export DATABASE_URL=sqlite+pysqlite:///./dev.db
 
-python -m app.data.seed               # competitions, teams, 2 seasons of results, fixtures + Elo
-python -m app.jobs.predict_batch      # predictions for upcoming fixtures
+python -m alembic upgrade head        # create schema (prediction + user domains)
+python -m app.data.seed               # teams, 2 seasons of results, fixtures, Elo, dev user
+python -m app.jobs.predict_batch      # persist predictions for upcoming fixtures
 python -m uvicorn app.main:app --port 8001
 ```
 
 ```bash
 cd services/bff
 dotnet run --project BetRight.Bff --urls http://localhost:8080
-# Ml:BaseUrl defaults to http://localhost:8001 (override with env Ml__BaseUrl)
+# Ml:BaseUrl defaults to http://localhost:8001; set ConnectionStrings__Postgres +
+# ConnectionStrings__Redis to enable the user-domain endpoints (favourites/saved/…).
 ```
 
 Point the app at it: in `betright-mobile/.env` set `EXPO_PUBLIC_USE_MOCK=false` and
 `EXPO_PUBLIC_API_URL=http://localhost:8080`, then `npm run web`.
+
+## Run with Postgres + Redis (full surface)
+
+```bash
+docker compose -f infra/docker-compose.yml up -d postgres redis   # host Postgres → 5433
+cd services/ml-prediction
+export DATABASE_URL="postgresql+psycopg://betright:betright@localhost:5433/betright"
+python -m alembic upgrade head && python -m app.data.seed && python -m app.jobs.predict_batch
+SCHEDULER_ENABLED=true python -m uvicorn app.main:app --port 8001   # background batch + post-match
+```
+
+```bash
+cd services/bff
+ConnectionStrings__Postgres="Host=localhost;Port=5433;Database=betright;Username=betright;Password=betright" \
+ConnectionStrings__Redis="localhost:6379" Ml__BaseUrl="http://localhost:8001" \
+  dotnet run --project BetRight.Bff --urls http://localhost:8080
+```
+
+The dev user is `dev-user` (the `X-User-Id` header overrides it; real JWT auth is a later step).
 
 ## Run with real data (football-data.org)
 
@@ -78,16 +104,22 @@ cd services/bff && dotnet test           # snake→camel mapping, envelope, quic
 
 ## API surface
 
-BFF (`/v1/*`, app-facing, camelCase envelope): `mobile/home`, `matches`,
-`matches/{id}/detail`, `predictions/manual` (POST), `models/performance`.
+BFF (`/v1/*`, app-facing, camelCase envelope, Redis-cached reads):
+`mobile/home`, `mobile/favourites`, `matches`, `matches/{id}/detail`,
+`predictions/manual` (POST), `models/performance`, `teams/{id}`, `competitions/{id}`,
+`users/me/profile`, `users/me/preferences` (PUT), `users/me/saved-predictions` (GET/POST/DELETE),
+`notifications`, `notifications/preferences` (PUT).
 
-ML (`/internal/*`, BFF-only, snake_case): `predict`, `predict/manual`,
-`predictions/upcoming`, `models/performance`.
+ML (`/internal/*`, BFF-only, snake_case): `predict`, `predict/manual`, `predictions/upcoming`,
+`teams/{id}`, `competitions/{id}`, `models/performance`, `jobs/predict`, `jobs/postmatch`.
 
 ## Notes / next
 
 - BFF targets `net10.0` (this env's SDK); the architecture doc specifies .NET 8 — a one-line TFM
-  change. Cache is in-memory for dev; Redis is wired in compose for prod.
+  change. Cache is Redis when `ConnectionStrings:Redis` is set, else in-memory.
+- **Store-and-serve:** the batch job + scheduler persist predictions; reads serve the stored row
+  (recompute only on a miss). Manual predictions are computed on demand (not stored).
+- **Auth:** dev-user seam (`X-User-Id`, default `dev-user`). Real JWT auth is the next step.
 - **Phase 7 (later):** LightGBM/XGBoost ensemble with time-based CV, calibration, and a model
   registry drops into the existing ensemble seam — flip the ML weight from 0 to live; nothing
   downstream changes. See `Docs/Product breakdown docs/` and the `ml-training-pipeline-skill`.
