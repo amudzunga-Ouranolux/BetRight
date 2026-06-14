@@ -1,0 +1,14 @@
+name: Performance Smoke
+
+on:
+  workflow_dispatch:
+
+jobs:
+  performance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Performance placeholder
+        run: |
+          echo "Run k6 or Artillery tests here once endpoints exist."
+          python scripts/performance_budget_check.py

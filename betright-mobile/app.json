@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "BetRight",
+    "slug": "betright-mobile",
+    "scheme": "betright",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ouranolux.betright"
+    },
+    "android": {
+      "package": "com.ouranolux.betright",
+      "adaptiveIcon": {
+        "backgroundColor": "#0A0F0A",
+        "foregroundImage": "./assets/adaptive-icon.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-secure-store",
+      "expo-sqlite",
+      "expo-image",
+      "expo-font"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

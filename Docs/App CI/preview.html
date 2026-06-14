@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BetRight Sports Prediction App UI Prototype</title>
+  <style>
+    :root {
+      --bg: #0a100c;
+      --bg-2: #101912;
+      --panel: rgba(20, 31, 24, 0.88);
+      --panel-2: rgba(30, 44, 34, 0.78);
+      --stroke: rgba(211, 255, 60, 0.18);
+      --stroke-soft: rgba(255,255,255,0.09);
+      --lime: #dfff34;
+      --lime-2: #9cf622;
+      --green: #42e56b;
+      --emerald: #0ba35c;
+      --gold: #ffcf4a;
+      --red: #ff4141;
+      --text: #f4f7ef;
+      --muted: rgba(244, 247, 239, 0.62);
+      --muted-2: rgba(244, 247, 239, 0.38);
+      --shadow: 0 24px 60px rgba(0,0,0,.45);
+      --radius-xl: 34px;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+      --font-display: "Inter Tight", "Arial Narrow", Impact, system-ui, sans-serif;
+      --font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(223,255,52,.17), transparent 30%),
+        radial-gradient(circle at 90% 10%, rgba(66,229,107,.09), transparent 28%),
+        linear-gradient(135deg, #818976 0%, #949b86 100%);
+      color: var(--text);
+      font-family: var(--font-body);
+    }
+
+    body {
+      padding: 34px 22px;
+      overflow-x: hidden;
+    }
+
+    .brand-board {
+      max-width: 1680px;
+      margin: 0 auto;
+    }
+
+    .board-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 24px;
+      color: #11170f;
+      margin-bottom: 28px;
+      padding: 0 6px;
+    }
+
+    .board-header h1 {
+      margin: 0;
+      font-family: var(--font-display);
+      letter-spacing: -0.04em;
+      font-size: clamp(34px, 4vw, 70px);
+      line-height: .9;
+    }
+
+    .board-header p {
+      max-width: 650px;
+      margin: 10px 0 0;
+      color: rgba(17,23,15,.72);
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .ci-pill {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: rgba(10,16,12,.78);
+      color: var(--lime);
+      border: 1px solid rgba(223,255,52,.28);
+      font-weight: 800;
+      letter-spacing: .02em;
+      white-space: nowrap;
+      box-shadow: 0 14px 30px rgba(0,0,0,.18);
+    }
+
+    .screens {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(260px, 1fr));
+      gap: 26px;
+      align-items: start;
+    }
+
+    .phone {
+      position: relative;
+      width: 100%;
+      max-width: 390px;
+      min-height: 830px;
+      margin: 0 auto;
+      border-radius: var(--radius-xl);
+      border: 2px solid rgba(223,255,52,.88);
+      background:
+        radial-gradient(circle at 50% 5%, rgba(223,255,52,.16), transparent 18%),
+        linear-gradient(180deg, #07110d 0%, #020604 100%);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .phone::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.06), transparent 20%),
+        radial-gradient(circle at 50% 20%, rgba(53,255,123,.13), transparent 30%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .phone::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 10px;
+      width: 118px;
+      height: 4px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: #fff;
+      opacity: .92;
+      z-index: 5;
+    }
+
+    .screen-content {
+      position: relative;
+      z-index: 2;
+      padding: 22px 16px 76px;
+      min-height: inherit;
+    }
+
+    .topbar, .row, .between, .center {
+      display: flex;
+      align-items: center;
+    }
+
+    .between { justify-content: space-between; }
+    .center { justify-content: center; }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #ece4cc, #7f916b);
+      display: grid;
+      place-items: center;
+      color: #092015;
+      font-weight: 900;
+      border: 2px solid rgba(255,255,255,.18);
+      overflow: hidden;
+    }
+
+    .brand {
+      margin-left: 10px;
+    }
+
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 950;
+      letter-spacing: -0.04em;
+      color: var(--lime);
+      font-style: italic;
+    }
+
+    .brand-sub {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .icon-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--stroke-soft);
+      background: rgba(255,255,255,.035);
+      color: var(--text);
+      cursor: pointer;
+      transition: .2s ease;
+      position: relative;
+    }
+
+    .icon-btn:hover, .chip:hover, .nav-item:hover, .market:hover, .selection:hover {
+      transform: translateY(-1px);
+      border-color: rgba(223,255,52,.4);
+    }
+
+    .badge {
+      position: absolute;
+      top: -5px;
+      right: -4px;
+      min-width: 18px;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--lime);
+      color: #0b140d;
+      font-size: 10px;
+      font-weight: 900;
+    }
+
+    .chips {
+      display: flex;
+      gap: 9px;
+      overflow-x: auto;
+      padding: 20px 0 12px;
+      scrollbar-width: none;
+    }
+    .chips::-webkit-scrollbar { display: none; }
+
+    .chip {
+      flex: 0 0 auto;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke-soft);
+      background: rgba(255,255,255,.035);
+      color: var(--text);
+      font-size: 13px;
+      cursor: pointer;
+      transition: .2s ease;
+    }
+
+    .chip.active {
+      background: linear-gradient(180deg, var(--lime), var(--lime-2));
+      color: #0b140d;
+      border-color: transparent;
+      font-weight: 900;
+    }
+
+    .section-title {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin: 12px 0 10px;
+    }
+
+    .hero-card {
+      position: relative;
+      overflow: hidden;
+      min-height: 268px;
+      border-radius: 24px;
+      padding: 18px;
+      border: 1px solid var(--stroke);
+      background:
+        linear-gradient(rgba(5,12,8,.3), rgba(5,12,8,.76)),
+        radial-gradient(circle at 50% 20%, rgba(223,255,52,.2), transparent 38%),
+        linear-gradient(135deg, rgba(54,90,48,.8), rgba(4,11,8,.95));
+      box-shadow: inset 0 1px rgba(255,255,255,.06);
+    }
+
+    .stadium-lines {
+      position: absolute;
+      inset: 0;
+      opacity: .42;
+      background:
+        repeating-linear-gradient(90deg, transparent 0 14px, rgba(255,255,255,.04) 14px 15px),
+        radial-gradient(ellipse at center, transparent 0 25%, rgba(223,255,52,.1) 26%, transparent 28%);
+      pointer-events: none;
+    }
+
+    .teams {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr 50px 1fr;
+      gap: 10px;
+      align-items: center;
+      text-align: center;
+      margin-top: 22px;
+    }
+
+    .crest {
+      width: 68px;
+      height: 78px;
+      margin: 0 auto 8px;
+      clip-path: polygon(50% 0, 92% 14%, 86% 75%, 50% 100%, 14% 75%, 8% 14%);
+      background: linear-gradient(135deg, #12345a, #0b1722);
+      border: 2px solid rgba(255,255,255,.32);
+      display: grid;
+      place-items: center;
+      color: var(--gold);
+      font-size: 28px;
+      font-weight: 900;
+      box-shadow: 0 12px 24px rgba(0,0,0,.25);
+    }
+
+    .crest.wolf {
+      background: linear-gradient(135deg, #4a4b45, #111);
+      color: #fff;
+    }
+
+    .team-name {
+      font-family: var(--font-display);
+      font-weight: 900;
+      letter-spacing: -.02em;
+      text-transform: uppercase;
+      font-size: 16px;
+      line-height: 1.05;
+    }
+
+    .vs {
+      font-family: var(--font-display);
+      font-size: 26px;
+      font-weight: 950;
+      color: var(--lime);
+      text-shadow: 0 0 20px rgba(223,255,52,.45);
+    }
+
+    .mini-meta {
+      position: relative;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .prediction-box {
+      position: relative;
+      margin-top: 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(223,255,52,.2);
+      background: rgba(5,12,8,.62);
+      padding: 14px;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(156,246,34,.15);
+      color: var(--lime);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .prediction-result {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 12px;
+      gap: 12px;
+    }
+
+    .prediction-result strong {
+      font-size: 15px;
+      letter-spacing: .01em;
+    }
+
+    .big-percent {
+      font-family: var(--font-display);
+      font-weight: 950;
+      font-size: 34px;
+      line-height: .9;
+    }
+
+    .bar {
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.1);
+      overflow: hidden;
+      margin-top: 12px;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--green), var(--lime));
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .market, .pick-card, .panel, .match-row, .selection, .summary-card {
+      border-radius: var(--radius-md);
+      border: 1px solid var(--stroke-soft);
+      background: var(--panel);
+      box-shadow: inset 0 1px rgba(255,255,255,.045);
+    }
+
+    .market {
+      padding: 14px 12px;
+      min-height: 76px;
+      transition: .2s ease;
+    }
+
+    .market-title {
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .odd-line {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .odd-line strong, .odds {
+      color: var(--lime);
+      font-weight: 950;
+      font-size: 16px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 18px 0 10px;
+    }
+
+    .section-head span:first-child {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .section-head span:last-child {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .pick-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .pick-card {
+      padding: 12px;
+      min-height: 150px;
+      position: relative;
+    }
+
+    .pick-card .x {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      color: var(--muted-2);
+    }
+
+    .hot {
+      background: rgba(255,92,41,.16);
+      color: #ff9a64;
+    }
+    .value {
+      background: rgba(61,242,162,.14);
+      color: #66ffbc;
+    }
+    .medium {
+      background: rgba(255,207,74,.16);
+      color: var(--gold);
+    }
+
+    .pick-title {
+      margin-top: 18px;
+      font-weight: 900;
+      font-size: 14px;
+    }
+
+    .pick-meta {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .small-progress {
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      margin-top: 8px;
+      overflow: hidden;
+    }
+
+    .small-progress span {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, var(--emerald), var(--lime));
+      border-radius: inherit;
+    }
+
+    .bottom-nav {
+      position: absolute;
+      z-index: 4;
+      left: 12px;
+      right: 12px;
+      bottom: 24px;
+      height: 58px;
+      border-radius: 25px;
+      background: rgba(12,18,14,.88);
+      border: 1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(14px);
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      align-items: center;
+      box-shadow: 0 -16px 30px rgba(0,0,0,.28);
+    }
+
+    .nav-item {
+      display: grid;
+      place-items: center;
+      gap: 3px;
+      color: var(--muted);
+      font-size: 10px;
+      transition: .2s ease;
+      cursor: pointer;
+    }
+
+    .nav-item .nav-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 15px;
+    }
+
+    .nav-item.active {
+      color: var(--lime);
+      font-weight: 900;
+    }
+
+    .nav-item.active .nav-icon {
+      background: radial-gradient(circle, var(--lime) 0%, rgba(223,255,52,.18) 60%, transparent 72%);
+      color: #0b140d;
+    }
+
+    .page-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 950;
+      text-align: center;
+      letter-spacing: -.03em;
+    }
+
+    .detail-hero {
+      margin-top: 20px;
+      min-height: 188px;
+      border-radius: 24px;
+      padding: 18px;
+      background:
+        linear-gradient(rgba(5,12,8,.2), rgba(5,12,8,.88)),
+        radial-gradient(circle at 50% 15%, rgba(223,255,52,.18), transparent 35%),
+        linear-gradient(135deg, rgba(44,68,40,.75), rgba(2,7,5,.95));
+      border: 1px solid var(--stroke-soft);
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 4px;
+      padding: 4px;
+      margin-top: -15px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke-soft);
+      background: rgba(0,0,0,.4);
+      position: relative;
+      z-index: 2;
+    }
+
+    .tab {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 9px 0;
+      border-radius: 999px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      background: var(--lime);
+      color: #0b140d;
+      font-weight: 900;
+    }
+
+    .panel {
+      padding: 14px;
+      margin-top: 10px;
+    }
+
+    .prob-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      text-align: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .prob-row > div {
+      border-right: 1px solid rgba(255,255,255,.12);
+    }
+    .prob-row > div:last-child { border-right: 0; }
+
+    .prob {
+      font-family: var(--font-display);
+      font-size: 28px;
+      font-weight: 950;
+      color: var(--lime);
+    }
+    .prob.gold { color: var(--gold); }
+
+    .label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .xg-row {
+      display: grid;
+      grid-template-columns: 42px 1fr 42px;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+      font-weight: 900;
+    }
+
+    .scoreline-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .score-chip {
+      border-radius: 12px;
+      padding: 10px 4px;
+      background: rgba(255,255,255,.045);
+      border: 1px solid var(--stroke-soft);
+      text-align: center;
+      font-weight: 900;
+      font-size: 14px;
+    }
+
+    .score-chip small {
+      display: block;
+      color: var(--muted);
+      font-weight: 600;
+      margin-top: 4px;
+      font-size: 10px;
+    }
+
+    .market-tabs {
+      display: flex;
+      gap: 8px;
+      margin: 10px 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      overflow: hidden;
+      font-size: 12px;
+    }
+
+    .table th, .table td {
+      text-align: left;
+      padding: 9px 7px;
+      border-bottom: 1px solid rgba(255,255,255,.055);
+    }
+
+    .table th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 11px;
+    }
+
+    .table td:not(:first-child) {
+      text-align: center;
+      font-weight: 900;
+    }
+
+    .insight {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      line-height: 1.45;
+      font-size: 12px;
+    }
+
+    .brain {
+      min-width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: rgba(223,255,52,.12);
+      color: var(--lime);
+    }
+
+    .schedule-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      border: 1px solid var(--stroke-soft);
+      border-radius: 999px;
+      padding: 4px;
+      margin: 20px 0 12px;
+      background: rgba(255,255,255,.025);
+    }
+
+    .match-row {
+      display: grid;
+      grid-template-columns: 48px 1fr 72px 28px;
+      gap: 8px;
+      align-items: center;
+      padding: 12px;
+      margin-bottom: 8px;
+      min-height: 82px;
+    }
+
+    .minute {
+      color: var(--red);
+      font-weight: 900;
+      font-size: 13px;
+    }
+
+    .teams-list {
+      display: grid;
+      gap: 7px;
+      font-size: 13px;
+    }
+
+    .team-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .score {
+      font-weight: 950;
+      color: #fff;
+    }
+
+    .mini-odd {
+      border-radius: 11px;
+      border: 1px solid var(--stroke-soft);
+      padding: 7px 4px;
+      text-align: center;
+      font-size: 11px;
+      background: rgba(0,0,0,.18);
+    }
+
+    .mini-odd strong {
+      display: block;
+      color: var(--lime);
+      font-size: 15px;
+      margin-top: 2px;
+    }
+
+    .star {
+      color: var(--muted);
+      font-size: 22px;
+      cursor: pointer;
+    }
+    .star.active { color: var(--gold); }
+
+    .slip-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      border: 1px solid var(--stroke-soft);
+      border-radius: 999px;
+      padding: 4px;
+      margin: 20px 0 14px;
+    }
+
+    .selection {
+      padding: 13px;
+      margin-bottom: 10px;
+    }
+
+    .selection-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .selection-title {
+      font-weight: 950;
+      margin-bottom: 4px;
+    }
+
+    .selection-sub {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .remove {
+      color: var(--muted-2);
+      cursor: pointer;
+      font-weight: 900;
+    }
+
+    .add-selection {
+      border: 1px dashed rgba(223,255,52,.3);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      text-align: center;
+      color: var(--text);
+      background: rgba(255,255,255,.02);
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .summary-card {
+      padding: 14px;
+      margin-top: 10px;
+    }
+
+    .summary-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 10px 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .summary-line strong {
+      color: var(--text);
+      font-size: 16px;
+    }
+
+    .stake-control {
+      display: inline-flex;
+      gap: 12px;
+      align-items: center;
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: rgba(0,0,0,.25);
+      color: #fff;
+      border: 1px solid var(--stroke-soft);
+    }
+
+    .toggle {
+      width: 42px;
+      height: 22px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--green), var(--lime));
+      position: relative;
+    }
+
+    .toggle::after {
+      content: "";
+      position: absolute;
+      right: 3px;
+      top: 3px;
+      width: 16px;
+      height: 16px;
+      background: #0c130d;
+      border-radius: 50%;
+    }
+
+    .cta {
+      width: 100%;
+      border: 0;
+      margin-top: 12px;
+      border-radius: 14px;
+      padding: 17px 14px;
+      background: linear-gradient(180deg, var(--lime), var(--lime-2));
+      color: #0b140d;
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 950;
+      cursor: pointer;
+      box-shadow: 0 14px 26px rgba(156,246,34,.22);
+    }
+
+    .cta small {
+      display: block;
+      font-family: var(--font-body);
+      font-size: 10px;
+      margin-top: 2px;
+      letter-spacing: .02em;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      transform: translateX(-50%) translateY(120px);
+      padding: 14px 18px;
+      border-radius: 999px;
+      background: #0b140d;
+      color: var(--lime);
+      border: 1px solid rgba(223,255,52,.35);
+      box-shadow: var(--shadow);
+      font-weight: 900;
+      transition: .25s ease;
+      z-index: 99;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .design-system {
+      margin-top: 34px;
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 18px;
+      color: #10160e;
+    }
+
+    .ds-card {
+      border-radius: 24px;
+      padding: 22px;
+      background: rgba(255,255,255,.38);
+      border: 1px solid rgba(255,255,255,.35);
+      box-shadow: 0 18px 50px rgba(0,0,0,.12);
+      backdrop-filter: blur(16px);
+    }
+
+    .ds-card h2 {
+      margin: 0 0 10px;
+      font-family: var(--font-display);
+      font-size: 28px;
+      letter-spacing: -.04em;
+    }
+
+    .swatches {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .swatch {
+      width: 72px;
+      height: 72px;
+      border-radius: 18px;
+      display: grid;
+      place-items: end center;
+      padding: 8px;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 900;
+      box-shadow: inset 0 1px rgba(255,255,255,.25);
+    }
+
+    .principles {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .principles div {
+      padding: 12px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.36);
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    @media (max-width: 1280px) {
+      .screens { grid-template-columns: repeat(2, minmax(280px, 1fr)); }
+      .phone { max-width: 410px; }
+    }
+
+    @media (max-width: 720px) {
+      body { padding: 18px 10px; }
+      .board-header { display: block; }
+      .ci-pill { margin-top: 14px; }
+      .screens { grid-template-columns: 1fr; }
+      .phone { max-width: 420px; min-height: 830px; }
+      .design-system { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="brand-board">
+    <header class="board-header">
+      <div>
+        <h1>BetRight Mobile UI</h1>
+        <p>Premium sports prediction and betting-style mobile interface: compact components, dark high-performance theme, AI confidence, live fixtures, markets, and bet slip flow.</p>
+      </div>
+      <div class="ci-pill">⚡ Premium Sports CI</div>
+    </header>
+
+    <section class="screens">
+      <!-- HOME -->
+      <article class="phone" aria-label="Home screen">
+        <div class="screen-content">
+          <div class="topbar between">
+            <div class="row">
+              <div class="avatar">BR</div>
+              <div class="brand">
+                <div class="brand-title">BETRIGHT</div>
+                <div class="brand-sub">Level Pro 👑</div>
+              </div>
+            </div>
+            <div class="row" style="gap:8px">
+              <button class="icon-btn" onclick="showToast('Search opened')">⌕</button>
+              <button class="icon-btn" onclick="showToast('Notifications opened')">🔔<span class="badge">2</span></button>
+            </div>
+          </div>
+
+          <div class="chips sport-chips">
+            <button class="chip active" onclick="setActiveChip(this)">⚽ Football</button>
+            <button class="chip" onclick="setActiveChip(this)">🏀 Basketball</button>
+            <button class="chip" onclick="setActiveChip(this)">🎾 Tennis</button>
+            <button class="chip" onclick="setActiveChip(this)">🎮 Esports</button>
+          </div>
+
+          <div class="section-title">Featured Match</div>
+          <div class="hero-card">
+            <div class="stadium-lines"></div>
+            <div class="mini-meta">Today · 21:00<br>Premier League</div>
+            <div class="teams">
+              <div>
+                <div class="crest">♞</div>
+                <div class="team-name">Northfield<br>United</div>
+              </div>
+              <div class="vs">VS</div>
+              <div>
+                <div class="crest wolf">◆</div>
+                <div class="team-name">Riverdale<br>City</div>
+              </div>
+            </div>
+
+            <div class="prediction-box">
+              <div class="between">
+                <span class="section-title" style="margin:0">AI Prediction</span>
+                <span class="tag">High Confidence</span>
+              </div>
+              <div class="prediction-result">
+                <strong>NORTHFIELD WIN</strong>
+                <span class="big-percent">63%</span>
+              </div>
+              <div class="bar"><span style="width:63%"></span></div>
+            </div>
+          </div>
+
+          <div class="section-head"><span>Top Markets</span><span>View all</span></div>
+          <div class="cards-grid">
+            <div class="market">
+              <div class="market-title">1X2</div>
+              <div class="odd-line"><span>NFO</span><strong>1.78</strong></div>
+              <div class="odd-line"><span>Draw</span><strong style="color:#fff">3.60</strong></div>
+            </div>
+            <div class="market">
+              <div class="market-title">Over 2.5</div>
+              <div class="odds">1.72</div>
+            </div>
+            <div class="market">
+              <div class="market-title">BTTS</div>
+              <div class="odd-line"><span>Yes</span><strong>1.68</strong></div>
+            </div>
+          </div>
+
+          <div class="section-head"><span>Trending Picks</span><span>View all</span></div>
+          <div class="pick-grid">
+            <div class="pick-card">
+              <span class="tag hot">🔥 Hot</span><span class="x">×</span>
+              <div class="pick-title">Over 2.5 Goals <span class="odds" style="float:right">1.72</span></div>
+              <div class="pick-meta">Manor FC vs Eastport<br>78% confidence</div>
+              <div class="small-progress"><span style="width:78%"></span></div>
+            </div>
+            <div class="pick-card">
+              <span class="tag value">Nice Value</span><span class="x">×</span>
+              <div class="pick-title">Away Win <span class="odds" style="float:right">2.95</span></div>
+              <div class="pick-meta">Legion SC vs Albion FC<br>62% confidence</div>
+              <div class="small-progress"><span style="width:62%"></span></div>
+            </div>
+          </div>
+        </div>
+        <nav class="bottom-nav">
+          <div class="nav-item active"><span class="nav-icon">⌂</span><span>Home</span></div>
+          <div class="nav-item"><span class="nav-icon">◉</span><span>Live</span></div>
+          <div class="nav-item"><span class="nav-icon">◎</span><span>Predict</span></div>
+          <div class="nav-item"><span class="nav-icon">▣</span><span>My Bets</span></div>
+          <div class="nav-item"><span class="nav-icon">♙</span><span>Profile</span></div>
+        </nav>
+      </article>
+
+      <!-- MATCH DETAIL -->
+      <article class="phone" aria-label="Match detail screen">
+        <div class="screen-content">
+          <div class="topbar between">
+            <button class="icon-btn" onclick="showToast('Back')">←</button>
+            <div class="page-title">Match Detail</div>
+            <div class="row" style="gap:8px">
+              <button class="icon-btn" onclick="toggleStar(this)">☆</button>
+              <button class="icon-btn" onclick="showToast('Share prediction')">⇧</button>
+            </div>
+          </div>
+
+          <div class="detail-hero">
+            <div class="mini-meta">Premier League<br>Round 32</div>
+            <div class="teams" style="margin-top:12px">
+              <div>
+                <div class="crest">♞</div>
+                <div class="team-name">Northfield<br>United</div>
+              </div>
+              <div>
+                <div class="mini-meta">Today</div>
+                <div class="vs" style="font-size:30px">21:00</div>
+              </div>
+              <div>
+                <div class="crest wolf">◆</div>
+                <div class="team-name">Riverdale<br>City</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tabs">
+            <button class="tab active" onclick="setActiveTab(this)">Overview</button>
+            <button class="tab" onclick="setActiveTab(this)">Stats</button>
+            <button class="tab" onclick="setActiveTab(this)">H2H</button>
+            <button class="tab" onclick="setActiveTab(this)">Lineups</button>
+            <button class="tab" onclick="setActiveTab(this)">News</button>
+          </div>
+
+          <div class="panel">
+            <div class="section-title" style="margin:0">AI Win Probability</div>
+            <div class="prob-row">
+              <div><div class="prob">63%</div><div class="label">Northfield</div></div>
+              <div><div class="prob" style="color:#fff">22%</div><div class="label">Draw</div></div>
+              <div><div class="prob gold">15%</div><div class="label">Riverdale</div></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="section-title" style="margin:0">Expected Goals (xG)</div>
+            <div class="xg-row">
+              <span>1.92</span>
+              <div class="bar" style="margin:0"><span style="width:72%"></span></div>
+              <span>1.12</span>
+            </div>
+          </div>
+
+          <div class="section-title">Likely Scorelines</div>
+          <div class="scoreline-row">
+            <div class="score-chip">2-1<small>8.5%</small></div>
+            <div class="score-chip">1-0<small>7.4%</small></div>
+            <div class="score-chip">2-0<small>6.8%</small></div>
+            <div class="score-chip">2-2<small>6.1%</small></div>
+            <div class="score-chip">1-1<small>5.6%</small></div>
+          </div>
+
+          <div class="market-tabs">
+            <button class="chip active" onclick="setActiveChip(this)">AI Markets</button>
+            <button class="chip" onclick="setActiveChip(this)">Goals</button>
+            <button class="chip" onclick="setActiveChip(this)">Teams</button>
+            <button class="chip" onclick="setActiveChip(this)">Players</button>
+          </div>
+
+          <div class="panel">
+            <table class="table">
+              <thead>
+                <tr><th>Market</th><th>Home</th><th>Draw</th><th>Away</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>1X2</td><td>1.78</td><td>3.60</td><td>4.40</td></tr>
+                <tr><td>Over 2.5</td><td>1.72</td><td>—</td><td>2.10</td></tr>
+                <tr><td>BTTS</td><td>Yes 1.68</td><td>—</td><td>No 2.05</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="panel insight">
+            <div class="brain">🧠</div>
+            <div>
+              <strong>AI Insight</strong><br>
+              Northfield have won 6 of their last 7 home games scoring 2+ goals. Riverdale struggle away.
+              <div class="tag" style="margin-top:8px">Strong edge to the home side</div>
+            </div>
+          </div>
+        </div>
+        <nav class="bottom-nav">
+          <div class="nav-item"><span class="nav-icon">⌂</span><span>Home</span></div>
+          <div class="nav-item"><span class="nav-icon">◉</span><span>Live</span></div>
+          <div class="nav-item active"><span class="nav-icon">◎</span><span>Predict</span></div>
+          <div class="nav-item"><span class="nav-icon">▣</span><span>My Bets</span></div>
+          <div class="nav-item"><span class="nav-icon">♙</span><span>Profile</span></div>
+        </nav>
+      </article>
+
+      <!-- MATCHES -->
+      <article class="phone" aria-label="Matches screen">
+        <div class="screen-content">
+          <div class="topbar between">
+            <div style="width:42px"></div>
+            <div class="page-title">MATCHES</div>
+            <div class="row" style="gap:8px">
+              <button class="icon-btn" onclick="showToast('Search fixtures')">⌕</button>
+              <button class="icon-btn" onclick="showToast('Filters opened')">⚙</button>
+            </div>
+          </div>
+
+          <div class="schedule-tabs">
+            <button class="tab" onclick="setActiveTab(this)">Live <span class="tag" style="padding:1px 6px">3</span></button>
+            <button class="tab active" onclick="setActiveTab(this)">Today</button>
+            <button class="tab" onclick="setActiveTab(this)">Upcoming</button>
+          </div>
+
+          <div class="chips" style="padding:0 0 12px">
+            <button class="chip">All Leagues⌄</button>
+            <button class="chip">⚽ Football</button>
+            <button class="chip">⭐ Favorites</button>
+          </div>
+
+          <div class="section-title"><span style="color:var(--red)">●</span> Live Now</div>
+
+          <div class="match-row">
+            <div class="minute">72'</div>
+            <div class="teams-list">
+              <div class="team-row"><span>🛡️ Manor FC</span><span class="score">2</span></div>
+              <div class="team-row"><span>⚪ Eastport City</span><span class="score">1</span></div>
+            </div>
+            <div class="mini-odd">Over 2.5<strong>1.72</strong></div>
+            <div class="star" onclick="toggleStar(this)">☆</div>
+          </div>
+
+          <div class="match-row">
+            <div class="minute">45+1'</div>
+            <div class="teams-list">
+              <div class="team-row"><span>🔷 Legion SC</span><span class="score">0</span></div>
+              <div class="team-row"><span>⚫ Albion FC</span><span class="score">0</span></div>
+            </div>
+            <div class="mini-odd">BTTS Yes<strong>1.68</strong></div>
+            <div class="star" onclick="toggleStar(this)">☆</div>
+          </div>
+
+          <div class="match-row">
+            <div class="minute">28'</div>
+            <div class="teams-list">
+              <div class="team-row"><span>🟣 Kingsford FC</span><span class="score">1</span></div>
+              <div class="team-row"><span>⚓ Harbor United</span><span class="score">0</span></div>
+            </div>
+            <div class="mini-odd">1X2 Home<strong>1.85</strong></div>
+            <div class="star active" onclick="toggleStar(this)">★</div>
+          </div>
+
+          <div class="section-title">Later Today</div>
+
+          <div class="match-row">
+            <div class="label">17:30</div>
+            <div class="teams-list">
+              <div>Summit Rovers</div>
+              <div>Oakridge FC</div>
+            </div>
+            <div class="mini-odd">Over 2.5<strong>1.80</strong></div>
+            <div class="star" onclick="toggleStar(this)">☆</div>
+          </div>
+
+          <div class="match-row">
+            <div class="label">21:00</div>
+            <div class="teams-list">
+              <div>Northfield United</div>
+              <div>Riverdale City</div>
+            </div>
+            <div class="mini-odd">1X2 Home<strong>1.78</strong></div>
+            <div class="star active" onclick="toggleStar(this)">★</div>
+          </div>
+
+          <div class="match-row">
+            <div class="label">23:15</div>
+            <div class="teams-list">
+              <div>Metro FC</div>
+              <div>Capital City</div>
+            </div>
+            <div class="mini-odd">Over 2.5<strong>1.83</strong></div>
+            <div class="star" onclick="toggleStar(this)">☆</div>
+          </div>
+        </div>
+        <nav class="bottom-nav">
+          <div class="nav-item"><span class="nav-icon">⌂</span><span>Home</span></div>
+          <div class="nav-item active"><span class="nav-icon">◉</span><span>Live</span></div>
+          <div class="nav-item"><span class="nav-icon">◎</span><span>Predict</span></div>
+          <div class="nav-item"><span class="nav-icon">▣</span><span>My Bets</span></div>
+          <div class="nav-item"><span class="nav-icon">♙</span><span>Profile</span></div>
+        </nav>
+      </article>
+
+      <!-- BET SLIP -->
+      <article class="phone" aria-label="Bet slip screen">
+        <div class="screen-content">
+          <div class="topbar between">
+            <div style="width:42px"></div>
+            <div class="page-title">MY BET SLIP <span class="tag" style="vertical-align:middle">3</span></div>
+            <button class="icon-btn" onclick="showToast('Slip settings')">⚙</button>
+          </div>
+
+          <div class="slip-tabs">
+            <button class="tab" onclick="setActiveTab(this)">Singles</button>
+            <button class="tab active" onclick="setActiveTab(this)">Accumulator</button>
+            <button class="tab" onclick="setActiveTab(this)">System</button>
+          </div>
+
+          <div class="selection">
+            <div class="selection-head">
+              <div>
+                <div class="selection-title">⚽ Northfield United</div>
+                <div class="selection-sub">1X2 Full Time<br>Northfield United vs Riverdale City</div>
+                <span class="tag" style="margin-top:8px">High</span>
+              </div>
+              <div class="row" style="gap:10px">
+                <div class="odds">1.78</div><span class="remove" onclick="removeSelection(this)">×</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="selection">
+            <div class="selection-head">
+              <div>
+                <div class="selection-title">⚽ Over 2.5 Goals</div>
+                <div class="selection-sub">Total Goals<br>Manor FC vs Eastport City</div>
+                <span class="tag" style="margin-top:8px">High</span>
+              </div>
+              <div class="row" style="gap:10px">
+                <div class="odds">1.72</div><span class="remove" onclick="removeSelection(this)">×</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="selection">
+            <div class="selection-head">
+              <div>
+                <div class="selection-title">⚽ BTTS – Yes</div>
+                <div class="selection-sub">Both Teams To Score<br>Legion SC vs Albion FC</div>
+                <span class="tag medium" style="margin-top:8px">Medium</span>
+              </div>
+              <div class="row" style="gap:10px">
+                <div class="odds">1.68</div><span class="remove" onclick="removeSelection(this)">×</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="add-selection" onclick="showToast('Selection search opened')">＋ Add Another Selection</div>
+
+          <div class="summary-card">
+            <div class="summary-line"><span>Total Odds</span><strong>5.15</strong></div>
+            <div class="summary-line"><span>Stake</span><span class="stake-control"><b onclick="stake(-10)">−</b><span id="stakeValue">100.00</span><b onclick="stake(10)">＋</b></span></div>
+            <div class="summary-line"><span>Potential Payout</span><strong id="payout" style="color:var(--green)">515.00</strong></div>
+            <div class="summary-line"><span>Bet Boost</span><span class="tag">10%</span><span class="toggle"></span></div>
+            <div class="summary-line"><span>Boosted Payout</span><strong id="boosted" style="color:var(--gold)">566.50</strong></div>
+          </div>
+
+          <div class="panel">
+            <div class="between">
+              <strong>🧠 AI Confidence</strong>
+              <span class="odds">High (76%)</span>
+            </div>
+            <div class="bar"><span style="width:76%"></span></div>
+          </div>
+
+          <button class="cta" onclick="showToast('Prototype only: Place Bet tapped')">
+            PLACE BET
+            <small id="ctaPayout">POTENTIAL PAYOUT 566.50</small>
+          </button>
+        </div>
+        <nav class="bottom-nav">
+          <div class="nav-item"><span class="nav-icon">⌂</span><span>Home</span></div>
+          <div class="nav-item"><span class="nav-icon">◉</span><span>Live</span></div>
+          <div class="nav-item"><span class="nav-icon">◎</span><span>Predict</span></div>
+          <div class="nav-item active"><span class="nav-icon">▣</span><span>My Bets</span></div>
+          <div class="nav-item"><span class="nav-icon">♙</span><span>Profile</span></div>
+        </nav>
+      </article>
+    </section>
+
+    <section class="design-system">
+      <div class="ds-card">
+        <h2>UI Direction</h2>
+        <p>The visual identity uses a premium dark sports palette with betting-market energy: near-black surfaces, emerald depth, electric lime for action/AI confidence, and restrained gold for high-value highlights. Components are compact, card-based, and mobile-first with dense but readable information hierarchy.</p>
+        <div class="principles">
+          <div><strong>Compact components:</strong> small pills, narrow cards, tight tables, and quick-read odds blocks.</div>
+          <div><strong>Sports-first navigation:</strong> Home, Live, Predict, My Bets, Profile — everything reachable in one thumb zone.</div>
+          <div><strong>AI credibility:</strong> confidence bars, model reasons, xG, probabilities, and likely scorelines appear near betting actions.</div>
+        </div>
+      </div>
+      <div class="ds-card">
+        <h2>CI Palette</h2>
+        <div class="swatches">
+          <div class="swatch" style="background:#07110d">Obsidian</div>
+          <div class="swatch" style="background:#142219">Forest</div>
+          <div class="swatch" style="background:#0ba35c">Emerald</div>
+          <div class="swatch" style="background:#dfff34;color:#0b140d">Lime</div>
+          <div class="swatch" style="background:#ffcf4a;color:#111">Gold</div>
+          <div class="swatch" style="background:#ff4141">Live Red</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast">Action</div>
+
+  <script>
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => toast.classList.remove('show'), 1600);
+    }
+
+    function setActiveChip(el) {
+      const parent = el.parentElement;
+      parent.querySelectorAll('.chip').forEach(chip => chip.classList.remove('active'));
+      el.classList.add('active');
+      showToast(el.textContent.trim() + ' selected');
+    }
+
+    function setActiveTab(el) {
+      const parent = el.parentElement;
+      parent.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+      el.classList.add('active');
+      showToast(el.textContent.trim() + ' tab');
+    }
+
+    function toggleStar(el) {
+      const active = el.classList.toggle('active');
+      el.textContent = active ? '★' : '☆';
+      showToast(active ? 'Added to favorites' : 'Removed from favorites');
+    }
+
+    function removeSelection(el) {
+      const card = el.closest('.selection');
+      card.style.transition = '.25s ease';
+      card.style.opacity = '0';
+      card.style.transform = 'translateX(20px)';
+      setTimeout(() => {
+        card.remove();
+        showToast('Selection removed');
+      }, 250);
+    }
+
+    let stakeAmount = 100;
+    function stake(change) {
+      stakeAmount = Math.max(10, stakeAmount + change);
+      const totalOdds = 5.15;
+      const payout = stakeAmount * totalOdds;
+      const boosted = payout * 1.10;
+      document.getElementById('stakeValue').textContent = stakeAmount.toFixed(2);
+      document.getElementById('payout').textContent = payout.toFixed(2);
+      document.getElementById('boosted').textContent = boosted.toFixed(2);
+      document.getElementById('ctaPayout').textContent = 'POTENTIAL PAYOUT ' + boosted.toFixed(2);
+    }
+
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => showToast(item.innerText.replace(/\n/g, ' ') + ' selected'));
+    });
+
+    document.querySelectorAll('.market, .score-chip, .mini-odd').forEach(item => {
+      item.addEventListener('click', () => showToast('Market selected'));
+    });
+  </script>
+</body>
+</html>

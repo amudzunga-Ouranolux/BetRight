@@ -1,0 +1,101 @@
+{
+  "kitId": "lime-premium",
+  "screen": "onboarding-home-kit",
+  "artboard": {
+    "logicalWidth": 430,
+    "logicalHeight": 932,
+    "exportScale": 3,
+    "assetWidth": 1290,
+    "assetHeight": 2796
+  },
+  "colors": {
+    "background": "#020604",
+    "blackBase": "#030705",
+    "blackDeep": "#010403",
+    "surface": "rgba(11, 20, 15, 0.78)",
+    "surfaceSolid": "#0B140F",
+    "surfaceAlt": "#111C15",
+    "primary": "#D6FF19",
+    "primary2": "#A9FF25",
+    "textPrimary": "#FFFFFF",
+    "textSecondary": "#DDE8D6",
+    "textMuted": "#A3AD9C",
+    "textSoft": "#7F8A7B",
+    "border": "rgba(214, 255, 25, 0.26)",
+    "borderMuted": "rgba(255, 255, 255, 0.13)",
+    "inputBorder": "rgba(255, 255, 255, 0.18)",
+    "success": "#5CFF88",
+    "danger": "#FF3434",
+    "warning": "#FFCF4A"
+  },
+  "typography": {
+    "displayFont": "Saira Condensed or Rajdhani",
+    "bodyFont": "Inter",
+    "title": {
+      "size": 28,
+      "lineHeight": 32,
+      "weight": 800
+    },
+    "subtitle": {
+      "size": 15,
+      "lineHeight": 21,
+      "weight": 500
+    },
+    "cardLabel": {
+      "size": 16,
+      "lineHeight": 20,
+      "weight": 800
+    },
+    "sectionLabel": {
+      "size": 12,
+      "lineHeight": 16,
+      "weight": 800,
+      "letterSpacing": 0.2
+    },
+    "bodySmall": {
+      "size": 13,
+      "lineHeight": 18,
+      "weight": 500
+    },
+    "button": {
+      "size": 15,
+      "lineHeight": 20,
+      "weight": 800
+    }
+  },
+  "layout": {
+    "screenPaddingX": 24,
+    "logo": {
+      "top": 54,
+      "centerX": true,
+      "width": 148,
+      "height": 46
+    },
+    "backButton": {
+      "top": 68,
+      "left": 24,
+      "size": 24
+    },
+    "stepIndicator": {
+      "top": 134,
+      "height": 28,
+      "pillWidth": 68,
+      "lineWidthEachSide": 92
+    },
+    "titleBlock": {
+      "top": 178,
+      "left": 24,
+      "right": 24
+    },
+    "bottomActions": {
+      "bottom": 34,
+      "height": 52,
+      "gap": 16
+    },
+    "buttonRadius": 14,
+    "cardRadius": 18,
+    "inputRadius": 14,
+    "cardGap": 12,
+    "gridGap": 12
+  }
+}
