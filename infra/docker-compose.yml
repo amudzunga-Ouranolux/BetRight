@@ -1,0 +1,57 @@
+# Local development stack for the BetRight backend.
+# Brings up Postgres + Redis + the Python ML service + the .NET BFF.
+#   docker compose -f infra/docker-compose.yml up
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: betright
+      POSTGRES_PASSWORD: betright
+      POSTGRES_DB: betright
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # migrations run on first boot (alphabetical order)
+      - ../db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U betright"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  ml:
+    build: ../services/ml-prediction
+    environment:
+      DATABASE_URL: postgresql+psycopg://betright:betright@postgres:5432/betright
+      FOOTBALL_DATA_API_KEY: ${FOOTBALL_DATA_API_KEY:-}
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  bff:
+    build: ../services/bff
+    environment:
+      ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=betright;Username=betright;Password=betright
+      ConnectionStrings__Redis: redis:6379
+      Ml__BaseUrl: http://ml:8001
+    ports:
+      - "8080:8080"
+    depends_on:
+      - ml
+      - redis
+
+volumes:
+  pgdata:

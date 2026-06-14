@@ -1,0 +1,143 @@
+"""Top-level prediction orchestration.
+
+Ties the engine together: form/Elo inputs -> Dixon-Coles goal model -> markets,
+ensemble 1X2, confidence, rule-based explanation, and an immutable feature
+snapshot. This is the single entry point the FastAPI service and batch jobs call.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+
+from . import ensemble
+from .confidence import Confidence, compute_confidence, data_quality_score
+from .dixon_coles import build_goal_model, expected_goals
+from .elo import rating_outcome
+from .explain import Explanation, build_explanation
+from .features import build_snapshot
+from .form import TeamForm
+from .markets import Markets, OneXTwo, derive_markets, most_likely_score, outcome_probabilities
+
+MODEL_VERSION = "formula-1.0.0"
+
+
+@dataclass
+class PredictionResult:
+    model_version: str
+    outcome: OneXTwo            # final, ensembled 1X2 (percentages)
+    predicted_result: str       # home_win|draw|away_win
+    home_xg: float
+    away_xg: float
+    likely_score: str
+    confidence: Confidence
+    data_quality_score: float
+    markets: Markets
+    explanation: Explanation
+    feature_snapshot: dict
+    # component models kept for transparency / debugging
+    statistical: OneXTwo
+    rating: OneXTwo
+
+
+def predict(
+    *,
+    fixture_id: str,
+    home_team_id: str,
+    away_team_id: str,
+    home_name: str,
+    away_name: str,
+    home_form: TeamForm,
+    away_form: TeamForm,
+    elo_home: float,
+    elo_away: float,
+    league_base_goal_rate: float,
+    venue: str,
+    as_of: datetime,
+    historical_accuracy: float | None = None,
+) -> PredictionResult:
+    # 1. Expected goals -> Dixon-Coles score matrix.
+    home_xg, away_xg = expected_goals(
+        home_attack=home_form.attack_strength,
+        home_defence=home_form.defence_strength,
+        away_attack=away_form.attack_strength,
+        away_defence=away_form.defence_strength,
+        league_base_goal_rate=league_base_goal_rate,
+        venue=venue,
+    )
+    model = build_goal_model(home_xg, away_xg)
+
+    # 2. Component 1X2 estimates.
+    statistical = outcome_probabilities(model)
+    rating = rating_outcome(elo_home, elo_away, neutral=(venue == "neutral"))
+
+    # 3. Ensemble (renormalised over present models).
+    final = ensemble.combine({"statistical": statistical, "team_rating": rating})
+
+    # 4. Markets from the goal model.
+    markets = derive_markets(model)
+    likely = most_likely_score(model)
+
+    # 5. Confidence + data quality.
+    dq = data_quality_score(home_form.matches_sampled, away_form.matches_sampled)
+    confidence = compute_confidence(
+        final=final,
+        statistical=statistical,
+        rating=rating,
+        data_quality=dq,
+        home_results=home_form.recent_results,
+        away_results=away_form.recent_results,
+        historical_accuracy=historical_accuracy,
+    )
+
+    # 6. Explanation + snapshot.
+    explanation = build_explanation(
+        home_name=home_name,
+        away_name=away_name,
+        outcome=final,
+        home_xg=model.home_xg,
+        away_xg=model.away_xg,
+        home_form=home_form,
+        away_form=away_form,
+        markets=markets,
+        data_quality=dq,
+        venue=venue,
+    )
+    snapshot = build_snapshot(
+        fixture_id=fixture_id,
+        as_of=as_of,
+        home_form=home_form,
+        away_form=away_form,
+        elo_home=elo_home,
+        elo_away=elo_away,
+        league_base_goal_rate=league_base_goal_rate,
+        venue=venue,
+    )
+
+    predicted_result = _predicted_result(final)
+
+    return PredictionResult(
+        model_version=MODEL_VERSION,
+        outcome=final,
+        predicted_result=predicted_result,
+        home_xg=round(model.home_xg, 2),
+        away_xg=round(model.away_xg, 2),
+        likely_score=likely,
+        confidence=confidence,
+        data_quality_score=dq,
+        markets=markets,
+        explanation=explanation,
+        feature_snapshot=snapshot,
+        statistical=statistical,
+        rating=rating,
+    )
+
+
+def _predicted_result(outcome: OneXTwo) -> str:
+    trio = [
+        ("home_win", outcome.home_win),
+        ("draw", outcome.draw),
+        ("away_win", outcome.away_win),
+    ]
+    trio.sort(key=lambda t: t[1], reverse=True)
+    return trio[0][0]

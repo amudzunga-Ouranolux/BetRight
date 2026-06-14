@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    Architecture target is .NET 8 (see CLAUDE.md). This dev environment only has
+    the .NET 10 SDK, so we target net10.0 to build/run locally; switching to
+    net8.0 for production is a one-line TFM change.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RollForward>LatestMajor</RollForward>
+  </PropertyGroup>
+
+</Project>
