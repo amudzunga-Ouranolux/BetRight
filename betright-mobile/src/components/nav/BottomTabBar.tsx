@@ -59,6 +59,19 @@ export function BottomTabBar({ state, navigation }: TabBarProps) {
           if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
         };
 
+        // Active tab: icon sits in a rounded-square chip with a bright accent
+        // border and (on glow kits) a soft accent glow, matching the design.
+        const activeGlow =
+          focused && theme.effects.glowEnabled
+            ? {
+                shadowColor: theme.colors.primary,
+                shadowOpacity: 0.6,
+                shadowRadius: 10,
+                shadowOffset: { width: 0, height: 0 },
+                elevation: 6,
+              }
+            : undefined;
+
         return (
           <Pressable
             key={route.key}
@@ -72,21 +85,24 @@ export function BottomTabBar({ state, navigation }: TabBarProps) {
               <Box
                 alignItems="center"
                 justifyContent="center"
-                paddingHorizontal="sm"
-                paddingVertical="xxs"
-                borderRadius="pill"
-                style={{
-                  backgroundColor: focused ? theme.colors.primary + '24' : 'transparent',
-                  borderWidth: 1,
-                  borderColor: focused ? theme.colors.primary + '4D' : 'transparent',
-                }}
+                width={r.s(40)}
+                height={r.s(34)}
+                borderRadius="lg"
+                style={[
+                  {
+                    backgroundColor: focused ? theme.colors.primary + '1F' : 'transparent',
+                    borderWidth: 1.5,
+                    borderColor: focused ? theme.colors.primary : 'transparent',
+                  },
+                  activeGlow,
+                ]}
               >
-                <Icon size={r.s(17)} color={color} strokeWidth={focused ? 2.5 : 2} />
+                <Icon size={r.s(20)} color={color} strokeWidth={focused ? 2.4 : 2} />
               </Box>
               <BRText
                 style={{
-                  fontSize: r.s(8),
-                  lineHeight: r.s(10),
+                  fontSize: r.s(8.5),
+                  lineHeight: r.s(11),
                   fontFamily: focused ? theme.fonts.semibold : theme.fonts.medium,
                   color,
                 }}
