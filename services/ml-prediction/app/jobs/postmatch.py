@@ -129,6 +129,8 @@ def run_postmatch(session: Session) -> dict[str, int]:
 
 
 def _refresh_metrics(session: Session) -> None:
+    from ..engine.calibration import estimate_temperature
+
     results = list(session.scalars(select(models.PredictionResult)))
     if not results:
         return
@@ -137,10 +139,21 @@ def _refresh_metrics(session: Session) -> None:
     brier = sum(r.brier_score for r in results) / n
     log_loss = sum(r.log_loss for r in results) / n
 
+    # Calibration: (top predicted probability, was-correct) pairs across scored predictions.
+    preds = {p.prediction_id: p for p in session.scalars(select(models.Prediction))}
+    pairs: list[tuple[float, bool]] = []
+    for r in results:
+        p = preds.get(r.prediction_id)
+        if p is None:
+            continue
+        top = max(p.home_win_probability, p.draw_probability, p.away_win_probability) / 100.0
+        pairs.append((top, r.result_correct))
+
     mv = repo.ensure_model_version(session, MODEL_VERSION, "Formula engine (Dixon-Coles + Elo)")
     mv.accuracy = round(accuracy, 4)
     mv.brier_score = round(brier, 4)
     mv.log_loss = round(log_loss, 4)
+    mv.calibration_temp = round(estimate_temperature(pairs), 3)
     mv.sample_size = n
 
 

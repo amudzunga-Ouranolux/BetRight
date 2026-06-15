@@ -199,6 +199,7 @@ def _run(
 
     mv = repo.get_model_version(session, MODEL_VERSION)
     historical_accuracy = mv.accuracy if (mv and mv.accuracy is not None) else None
+    calibration_temp = mv.calibration_temp if mv else 1.0
 
     return predict(
         fixture_id=fixture_id,
@@ -214,6 +215,7 @@ def _run(
         venue=venue,
         as_of=as_of,
         historical_accuracy=historical_accuracy,
+        calibration_temp=calibration_temp,
     )
 
 

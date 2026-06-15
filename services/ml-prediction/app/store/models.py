@@ -113,6 +113,8 @@ class ModelVersion(Base):
     brier_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     log_loss: Mapped[float | None] = mapped_column(Float, nullable=True)
     accuracy: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # Probability temperature from the calibration step (1.0 = uncalibrated).
+    calibration_temp: Mapped[float] = mapped_column(Float, default=1.0)
     sample_size: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 

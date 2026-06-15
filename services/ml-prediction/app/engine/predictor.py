@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from . import ensemble
+from .calibration import apply_temperature
 from .confidence import Confidence, compute_confidence, data_quality_score
 from .dixon_coles import build_goal_model, expected_goals
 from .elo import rating_outcome
@@ -55,6 +56,7 @@ def predict(
     venue: str,
     as_of: datetime,
     historical_accuracy: float | None = None,
+    calibration_temp: float = 1.0,
 ) -> PredictionResult:
     # 1. Expected goals -> Dixon-Coles score matrix.
     home_xg, away_xg = expected_goals(
@@ -71,8 +73,11 @@ def predict(
     statistical = outcome_probabilities(model)
     rating = rating_outcome(elo_home, elo_away, neutral=(venue == "neutral"))
 
-    # 3. Ensemble (renormalised over present models).
+    # 3. Ensemble (renormalised over present models), then apply calibration.
     final = ensemble.combine({"statistical": statistical, "team_rating": rating})
+    if calibration_temp and abs(calibration_temp - 1.0) > 1e-6:
+        h, d, a = apply_temperature(final.home_win, final.draw, final.away_win, calibration_temp)
+        final = OneXTwo(home_win=h, draw=d, away_win=a)
 
     # 4. Markets from the goal model.
     markets = derive_markets(model)

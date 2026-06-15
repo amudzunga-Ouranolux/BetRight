@@ -85,6 +85,14 @@ def _upsert_fixture(session: Session, source: str, fx: RawFixture, counts: dict)
         counts["fixtures"] += 1
 
 
+def run(seasons: list[int] | None = None) -> dict:
+    """Scheduler/endpoint entry point. Skips cleanly when no API key is set."""
+    from ..config import get_settings
+
+    if not get_settings().football_data_api_key:
+        return {"skipped": "FOOTBALL_DATA_API_KEY not set"}
+    return ingest(FootballDataProvider(), seasons)
+
+
 if __name__ == "__main__":
-    result = ingest(FootballDataProvider())
-    print("ingested:", result)
+    print("ingested:", run())

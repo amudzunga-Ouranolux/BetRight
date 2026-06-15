@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app.engine import ensemble
+from app.engine.calibration import apply_temperature, estimate_temperature
 from app.engine.confidence import CONFIDENCE_CAP, compute_confidence, data_quality_score, label_for
 from app.engine.dixon_coles import build_goal_model, expected_goals
 from app.engine.elo import rating_outcome, updated_ratings
@@ -136,6 +137,23 @@ def test_compute_form_cold_start_uses_league_base():
 
 
 # --- End to end --------------------------------------------------------------
+
+def test_apply_temperature_softens_sharpens_and_noop():
+    base = (70.0, 20.0, 10.0)
+    soft = apply_temperature(*base, 1.5)   # T>1 flattens toward uniform
+    assert soft[0] < 70 and sum(soft) == pytest.approx(100, abs=0.3)
+    sharp = apply_temperature(*base, 0.6)  # T<1 sharpens
+    assert sharp[0] > 70 and sum(sharp) == pytest.approx(100, abs=0.3)
+    assert apply_temperature(*base, 1.0) == base  # T=1 is a no-op
+
+
+def test_estimate_temperature_overconfident_and_small_sample():
+    # avg confidence 0.8 but only 50% correct -> over-confident -> T > 1
+    overconfident = [(0.8, i < 5) for i in range(10)]
+    assert estimate_temperature(overconfident) > 1.0
+    # too few samples -> neutral
+    assert estimate_temperature([(0.8, True)]) == 1.0
+
 
 def test_score_prediction_brier_logloss():
     # Confident home call that comes in: low Brier, low log-loss, correct.
