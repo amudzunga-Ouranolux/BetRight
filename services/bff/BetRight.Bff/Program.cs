@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using System.Threading.RateLimiting;
 using BetRight.Bff;
 using BetRight.Bff.Auth;
 using BetRight.Bff.Caching;
@@ -59,10 +61,41 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization();
 
+// Basic per-IP fixed-window rate limiting (protects the BFF + the ML service it fronts).
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = builder.Configuration.GetValue("RateLimit:PerMinute", 120),
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+});
+
 var mlBaseUrl = builder.Configuration["Ml:BaseUrl"] ?? "http://localhost:8001";
 builder.Services.AddHttpClient<MlClient>(c => c.BaseAddress = new Uri(mlBaseUrl));
 
 var app = builder.Build();
+
+app.UseRateLimiter();
+
+// Correlation id + structured request logging. Echoes/propagates X-Request-Id.
+app.Use(async (ctx, next) =>
+{
+    var reqId = ctx.Request.Headers["X-Request-Id"].FirstOrDefault() ?? Guid.NewGuid().ToString("N");
+    ctx.Items["RequestId"] = reqId;
+    ctx.Response.Headers["X-Request-Id"] = reqId;
+    var sw = Stopwatch.StartNew();
+    await next();
+    sw.Stop();
+    app.Logger.LogInformation(
+        "{Method} {Path} -> {Status} {Elapsed}ms reqId={ReqId}",
+        ctx.Request.Method, ctx.Request.Path, ctx.Response.StatusCode, sw.ElapsedMilliseconds, reqId);
+});
 
 // Translate "no authenticated user" into a clean 401 envelope.
 app.Use(async (ctx, next) =>
