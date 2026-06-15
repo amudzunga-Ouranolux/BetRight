@@ -39,6 +39,7 @@ def ingest(provider: Provider, seasons: list[int] | None = None) -> dict[str, in
                         name=team.name,
                         short_name=team.short_name,
                         competition_id=team.competition_id,
+                        logo_url=team.logo_url,
                         source_name=provider.source_name,
                         source_record_id=team.source_record_id,
                     )
@@ -64,6 +65,7 @@ def _upsert_fixture(session: Session, source: str, fx: RawFixture, counts: dict)
                 kickoff_time=fx.kickoff_time,
                 home_goals=fx.home_goals,
                 away_goals=fx.away_goals,
+                neutral=fx.neutral,
                 source_name=source,
                 source_record_id=fx.source_record_id,
             )
@@ -77,6 +79,7 @@ def _upsert_fixture(session: Session, source: str, fx: RawFixture, counts: dict)
                 home_team_id=fx.home_team_id,
                 away_team_id=fx.away_team_id,
                 kickoff_time=fx.kickoff_time,
+                neutral=fx.neutral,
                 status=fx.status,
                 source_name=source,
                 source_record_id=fx.source_record_id,
@@ -86,12 +89,27 @@ def _upsert_fixture(session: Session, source: str, fx: RawFixture, counts: dict)
 
 
 def run(seasons: list[int] | None = None) -> dict:
-    """Scheduler/endpoint entry point. Skips cleanly when no API key is set."""
+    """Scheduler/endpoint entry point. Selects the provider and seeds Elo from the
+    ingested history. ESPN needs no key; football-data needs FOOTBALL_DATA_API_KEY."""
     from ..config import get_settings
+    from ..jobs.postmatch import bootstrap_ratings
+    from ..store.db import session_scope
 
-    if not get_settings().football_data_api_key:
-        return {"skipped": "FOOTBALL_DATA_API_KEY not set"}
-    return ingest(FootballDataProvider(), seasons)
+    settings = get_settings()
+    if settings.provider == "football-data":
+        if not settings.football_data_api_key:
+            return {"skipped": "FOOTBALL_DATA_API_KEY not set"}
+        provider = FootballDataProvider()
+    else:
+        from .espn import EspnProvider
+
+        provider = EspnProvider()
+
+    counts = ingest(provider, seasons)
+    # Seed Elo from the freshly ingested results so predictions have signal.
+    with session_scope() as session:
+        counts["ratings_bootstrapped"] = bootstrap_ratings(session)
+    return counts
 
 
 if __name__ == "__main__":

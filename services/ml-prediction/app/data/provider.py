@@ -22,6 +22,7 @@ class RawCompetition:
     name: str
     country: str | None
     source_record_id: str
+    logo_url: str | None = None
 
 
 @dataclass
@@ -31,6 +32,7 @@ class RawTeam:
     short_name: str | None
     competition_id: str
     source_record_id: str
+    logo_url: str | None = None
 
 
 @dataclass
@@ -44,6 +46,7 @@ class RawFixture:
     home_goals: int | None
     away_goals: int | None
     source_record_id: str
+    neutral: bool = False
 
 
 class Provider(Protocol):

@@ -16,6 +16,8 @@ class Settings:
         self.football_data_base_url: str = os.getenv(
             "FOOTBALL_DATA_BASE_URL", "https://api.football-data.org/v4"
         )
+        # Data provider: 'espn' (free, no key, live WC) or 'football-data' (needs key).
+        self.provider: str = os.getenv("PROVIDER", "espn")
         self.port: int = int(os.getenv("PORT", "8001"))
         # Background scheduler (batch predict + post-match). Off by default so dev
         # reloads and tests don't spawn timers; compose turns it on.

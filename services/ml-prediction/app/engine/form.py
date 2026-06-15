@@ -13,6 +13,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 
+# Pseudo-matches at the league baseline used to shrink sparse-sample strengths.
+PSEUDO_MATCHES = 4.0
+
+
 @dataclass
 class HistMatch:
     kickoff_time: datetime
@@ -78,8 +82,11 @@ def compute_form(
         raw_scored += scored
         raw_conceded += conceded
 
-    attack = weighted_scored / weight_total if weight_total else league_base_goal_rate
-    defence = weighted_conceded / weight_total if weight_total else league_base_goal_rate
+    # Shrink toward the league baseline by sample size (empirical-Bayes pseudo-counts)
+    # so teams with little history (e.g. national sides early in a tournament) regress
+    # to a sensible average instead of producing noisy, extreme expected goals.
+    attack = (weighted_scored + league_base_goal_rate * PSEUDO_MATCHES) / (weight_total + PSEUDO_MATCHES)
+    defence = (weighted_conceded + league_base_goal_rate * PSEUDO_MATCHES) / (weight_total + PSEUDO_MATCHES)
 
     recent = []
     for m in played[-recent_n:]:
