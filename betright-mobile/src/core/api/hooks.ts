@@ -88,9 +88,11 @@ export interface MatchStatRow {
   away: string;
 }
 
-export function useMatchDetail(fixtureId: string) {
+export function useMatchDetail(fixtureId: string, options?: { live?: boolean }) {
   return useQuery({
     queryKey: queryKeys.matchDetail(fixtureId),
+    // When live, poll for prediction refreshes (the polling fallback for SSE).
+    refetchInterval: options?.live ? 15_000 : false,
     queryFn: () =>
       getData<{ fixture: Fixture; prediction: MatchPrediction; stats: MatchStatRow[] }>(
         `/v1/matches/${fixtureId}/detail`,
@@ -356,4 +358,17 @@ export function useNotifications() {
         })),
       ),
   });
+}
+
+/** Unread notification count, polled so the bell badge stays current. */
+export function useUnreadCount() {
+  return useQuery({
+    queryKey: ['notifications-unread'],
+    queryFn: () => getData<{ count: number }>('/v1/notifications/unread-count', () => ({ count: 0 })),
+    refetchInterval: 30_000,
+  });
+}
+
+export function markNotificationRead(id: string) {
+  return putData<{ read: boolean }>(`/v1/notifications/${id}/read`, {}, () => ({ read: true }));
 }

@@ -1,10 +1,11 @@
 import { Pressable, ScrollView } from 'react-native';
 import { router } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { Bell, ChevronLeft, CircleCheck, Newspaper, Sparkles, type LucideIcon } from 'lucide-react-native';
 
 import { Box, useTheme } from '@/core/theme/restyle';
 import { useResponsive } from '@/core/theme/responsive';
-import { useNotifications, type NotificationItem } from '@/core/api/hooks';
+import { markNotificationRead, useNotifications, type NotificationItem } from '@/core/api/hooks';
 import { Screen } from '@/components/layout/Screen';
 import { BRText } from '@/components/primitives/BRText';
 import { GlassCard } from '@/components/primitives/GlassCard';
@@ -24,7 +25,17 @@ const ICON: Record<string, LucideIcon> = {
 export function NotificationsScreen() {
   const theme = useTheme();
   const r = useResponsive();
+  const qc = useQueryClient();
   const { data, isLoading, isError, refetch } = useNotifications();
+
+  const open = async (n: NotificationItem) => {
+    if (!n.read) {
+      await markNotificationRead(n.id);
+      qc.invalidateQueries({ queryKey: ['notifications'] });
+      qc.invalidateQueries({ queryKey: ['notifications-unread'] });
+    }
+    if (n.fixtureId) router.push(`/match/${n.fixtureId}`);
+  };
 
   return (
     <Screen edges={['top']}>
@@ -48,7 +59,7 @@ export function NotificationsScreen() {
         <ScrollView contentContainerStyle={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.lg }} showsVerticalScrollIndicator={false}>
           <GlassCard overflow="hidden">
             {data.map((n, i) => (
-              <Row key={n.id} item={n} divider={i > 0} onPress={n.fixtureId ? () => router.push(`/match/${n.fixtureId}`) : undefined} />
+              <Row key={n.id} item={n} divider={i > 0} onPress={() => open(n)} />
             ))}
           </GlassCard>
         </ScrollView>

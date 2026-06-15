@@ -212,6 +212,29 @@ app.MapGet("/v1/matches/{fixtureId}/detail", async (string fixtureId, MlClient m
     return Results.Ok(Ok(PredictionMapper.MatchDetail(pred), hit ? "hit" : "miss"));
 });
 
+// Server-Sent Events: push prediction refreshes for a fixture. (Live score data
+// arrives once the real feed is connected; for now it re-emits the prediction.)
+app.MapGet("/v1/matches/{fixtureId}/stream", async (string fixtureId, HttpContext ctx, MlClient ml, CancellationToken ct) =>
+{
+    ctx.Response.Headers.ContentType = "text/event-stream";
+    ctx.Response.Headers.CacheControl = "no-cache";
+    try
+    {
+        for (var i = 0; i < 20 && !ct.IsCancellationRequested; i++)
+        {
+            var pred = await ml.PredictFixtureAsync(fixtureId, ct);
+            if (pred is not null)
+            {
+                var json = JsonSerializer.Serialize(PredictionMapper.MatchPrediction(pred), camelJson);
+                await ctx.Response.WriteAsync($"event: prediction\ndata: {json}\n\n", ct);
+                await ctx.Response.Body.FlushAsync(ct);
+            }
+            await Task.Delay(TimeSpan.FromSeconds(10), ct);
+        }
+    }
+    catch (OperationCanceledException) { /* client disconnected */ }
+});
+
 // ---------------------------------------------------------------- Predictions
 app.MapPost("/v1/predictions/manual", async (ManualRequest req, MlClient ml) =>
 {
@@ -326,6 +349,19 @@ app.MapGet("/v1/notifications", async (HttpContext ctx, NotificationsRepo notifs
     var list = rows.Select(n => new NotificationDto(
         n.Id, n.Kind, n.Title, n.Body, n.FixtureId, n.Read, n.CreatedAt.ToString("o"))).ToList();
     return Results.Ok(Ok(list));
+});
+
+app.MapGet("/v1/notifications/unread-count", async (HttpContext ctx, NotificationsRepo notifs, Db db) =>
+{
+    if (!db.Configured) return Results.Json(Fail("NO_DB", "User store not configured."), statusCode: 503);
+    return Results.Ok(Ok(new { count = await notifs.UnreadCount(CurrentUser.Id(ctx)) }));
+});
+
+app.MapPut("/v1/notifications/{id}/read", async (string id, HttpContext ctx, NotificationsRepo notifs, Db db) =>
+{
+    if (!db.Configured) return Results.Json(Fail("NO_DB", "User store not configured."), statusCode: 503);
+    var n = await notifs.MarkRead(CurrentUser.Id(ctx), id);
+    return Results.Ok(Ok(new { read = n > 0 }));
 });
 
 app.MapPut("/v1/notifications/preferences", async (HttpContext ctx, NotificationPrefsRequest req, UserRepo users, Db db) =>

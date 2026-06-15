@@ -104,14 +104,23 @@ cd services/bff && dotnet test           # snake→camel mapping, envelope, quic
 
 ## API surface
 
-BFF (`/v1/*`, app-facing, camelCase envelope, Redis-cached reads):
-`mobile/home`, `mobile/favourites`, `matches`, `matches/{id}/detail`,
-`predictions/manual` (POST), `models/performance`, `teams/{id}`, `competitions/{id}`,
-`users/me/profile`, `users/me/preferences` (PUT), `users/me/saved-predictions` (GET/POST/DELETE),
-`notifications`, `notifications/preferences` (PUT).
+BFF (`/v1/*`, app-facing, camelCase envelope, Redis-cached reads, per-IP rate limited,
+`X-Request-Id` correlation):
+- Auth: `auth/register|login|refresh|logout` (POST) — JWT + rotating refresh tokens
+- Feed: `mobile/home`, `mobile/favourites`, `matches`, `matches/{id}/detail`,
+  `matches/{id}/stream` (SSE), `predictions/manual` (POST → prediction + breakdown),
+  `models/performance`, `teams/{id}`, `competitions/{id}`
+- User: `users/me/profile`, `users/me/preferences` (PUT), `users/me/favourites` (POST),
+  `users/me/compliance` (PUT), `users/me/export` (GET), `users/me` (DELETE),
+  `users/me/saved-predictions` (GET/POST/DELETE)
+- Notifications: `notifications` (GET), `notifications/unread-count` (GET),
+  `notifications/{id}/read` (PUT), `notifications/preferences` (PUT)
+
+Auth: real JWT (`sub` claim). A dev seam (`X-User-Id`, default `dev-user`) stays active
+while `Auth:AllowDevUser` is true; set it false in production to require a token.
 
 ML (`/internal/*`, BFF-only, snake_case): `predict`, `predict/manual`, `predictions/upcoming`,
-`teams/{id}`, `competitions/{id}`, `models/performance`, `jobs/predict`, `jobs/postmatch`.
+`teams/{id}`, `competitions/{id}`, `models/performance`, `jobs/predict|postmatch|ingest`.
 
 ## Notes / next
 
@@ -119,7 +128,19 @@ ML (`/internal/*`, BFF-only, snake_case): `predict`, `predict/manual`, `predicti
   change. Cache is Redis when `ConnectionStrings:Redis` is set, else in-memory.
 - **Store-and-serve:** the batch job + scheduler persist predictions; reads serve the stored row
   (recompute only on a miss). Manual predictions are computed on demand (not stored).
-- **Auth:** dev-user seam (`X-User-Id`, default `dev-user`). Real JWT auth is the next step.
-- **Phase 7 (later):** LightGBM/XGBoost ensemble with time-based CV, calibration, and a model
-  registry drops into the existing ensemble seam — flip the ML weight from 0 to live; nothing
-  downstream changes. See `Docs/Product breakdown docs/` and the `ml-training-pipeline-skill`.
+- **Auth:** real JWT (PBKDF2 hashes, rotating refresh tokens). Tokens live in the app's
+  SecureStore. Set `Auth:AllowDevUser=false` to disable the dev `X-User-Id` seam in prod.
+- **Calibration:** a temperature derived from scored predictions softens/sharpens probabilities
+  before serving (`model_versions.calibration_temp`). The ML ensemble can replace it later.
+
+### Needs external input (built to the seam, not faked)
+- **Live data:** set `FOOTBALL_DATA_API_KEY`, then `python -m app.data.ingest` (or
+  `POST /internal/jobs/ingest`, also scheduled daily when the key is present). Until then the
+  offline seed is the data source.
+- **ML ensemble (Phase 7):** LightGBM/XGBoost with time-based CV + a model registry drops into the
+  existing ensemble seam — flip the ML weight from 0 to live; nothing downstream changes. Needs
+  `numpy`/`lightgbm` (not on this env's Python 3.14) + seasons of real data.
+- **Push notifications:** the in-app notification feed + unread badge are live; real delivery needs
+  FCM/Expo credentials and a dev build. SSE (`/v1/matches/{id}/stream`) is implemented; the app
+  uses polling (`useMatchDetail(id, { live: true })`) as the portable fallback.
+- **Deployment:** local `docker-compose` only; cloud hosting + store signing are out of scope.

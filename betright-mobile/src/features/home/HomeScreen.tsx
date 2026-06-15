@@ -25,7 +25,7 @@ import { Box, useTheme } from '@/core/theme/restyle';
 import { useResponsive } from '@/core/theme/responsive';
 import { kitAssets } from '@/core/theme/assets';
 import { useThemeStore } from '@/core/theme/themeStore';
-import { useHome } from '@/core/api/hooks';
+import { useHome, useUnreadCount } from '@/core/api/hooks';
 import type { Fixture } from '@/models/fixture.model';
 import type { MatchOutcome } from '@/models/prediction.model';
 import type { TrendingPick, NewsItem } from '@/core/api/mock/fixtures';
@@ -60,6 +60,7 @@ export function HomeScreen() {
   const r = useResponsive();
   const kitId = useThemeStore((s) => s.kitId);
   const { data, isLoading, isError, refetch } = useHome();
+  const unreadCount = useUnreadCount().data?.count ?? 0;
 
   const logoW = r.s(96);
   // Taller screens show one more row per list so the page fills the viewport;
@@ -85,7 +86,29 @@ export function HomeScreen() {
         <Image source={kitAssets[kitId].logoFull} style={{ width: logoW, height: logoW / kitAssets[kitId].logoAR }} contentFit="contain" />
         <Box flexDirection="row" alignItems="center" gap="sm">
           <Pressable accessibilityRole="button" accessibilityLabel="Notifications" hitSlop={8} onPress={() => router.push('/notifications' as never)}>
-            <Bell size={r.s(20)} color={theme.colors.textPrimary} strokeWidth={2} />
+            <Box>
+              <Bell size={r.s(20)} color={theme.colors.textPrimary} strokeWidth={2} />
+              {unreadCount > 0 && (
+                <Box
+                  position="absolute"
+                  alignItems="center"
+                  justifyContent="center"
+                  style={{
+                    top: -r.s(4),
+                    right: -r.s(4),
+                    minWidth: r.s(13),
+                    height: r.s(13),
+                    paddingHorizontal: r.s(3),
+                    borderRadius: theme.borderRadii.pill,
+                    backgroundColor: theme.colors.primary,
+                  }}
+                >
+                  <BRText style={{ fontSize: r.s(7.5), fontFamily: theme.fonts.bold, color: theme.colors.onPrimary }}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </BRText>
+                </Box>
+              )}
+            </Box>
           </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="Profile" onPress={() => router.push('/(tabs)/profile')}>
             <TeamCrest name="Adriano Silva" shortName="AS" size={r.s(28)} />

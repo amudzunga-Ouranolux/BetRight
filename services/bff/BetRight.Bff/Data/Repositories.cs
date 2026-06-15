@@ -171,6 +171,13 @@ public class NotificationsRepo(Db db)
         return await c.ExecuteScalarAsync<int>(
             "select count(*) from notifications where user_id = @userId and read = false", new { userId });
     }
+
+    public async Task<int> MarkRead(string userId, string id)
+    {
+        using var c = db.Open();
+        return await c.ExecuteAsync(
+            "update notifications set read = true where id = @id and user_id = @userId", new { id, userId });
+    }
 }
 
 public class AuditRepo(Db db)
