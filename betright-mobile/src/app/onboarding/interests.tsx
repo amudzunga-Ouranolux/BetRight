@@ -32,8 +32,8 @@ export default function PredictionInterests() {
 
   return (
     <OnboardingShell
-      step={2}
-      total={5}
+      step={3}
+      total={6}
       title="Prediction Interests"
       subtitle="Tell us what you care about so we surface the right insights."
       onNext={() => router.push('/onboarding/notifications')}

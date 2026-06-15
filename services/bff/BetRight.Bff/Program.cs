@@ -331,6 +331,45 @@ app.MapPost("/v1/users/me/favourites", async (HttpContext ctx, FavouritesPrefsRe
     return Results.Ok(Ok(new { saved = true }));
 });
 
+// Compliance (age/region gate) — backend is the source of truth.
+app.MapPut("/v1/users/me/compliance", async (HttpContext ctx, ComplianceRequest req, UserRepo users, AuditRepo audit, Db db) =>
+{
+    if (!db.Configured) return Results.Json(Fail("NO_DB", "User store not configured."), statusCode: 503);
+    var userId = CurrentUser.Id(ctx);
+    await users.SetCompliance(userId, req.IsAdult, req.Region);
+    await audit.Log(userId, "set_compliance", "user", userId);
+    return Results.Ok(Ok(new { updated = true }));
+});
+
+// Data export (GDPR-style) — everything we hold for the user.
+app.MapGet("/v1/users/me/export", async (HttpContext ctx, UserRepo users, FavouritesRepo favs, SavedPredictionsRepo saved, NotificationsRepo notifs, Db db) =>
+{
+    if (!db.Configured) return Results.Json(Fail("NO_DB", "User store not configured."), statusCode: 503);
+    var userId = CurrentUser.Id(ctx);
+    var user = await users.GetUser(userId);
+    if (user is null) return Results.Json(Fail("NOT_FOUND", "User not found."), statusCode: 404);
+    var p = await users.GetPreferences(userId);
+    var export = new
+    {
+        user,
+        preferences = p,
+        favourites = await favs.ForUser(userId),
+        savedPredictions = await saved.ListForUser(userId),
+        notifications = await notifs.ListForUser(userId),
+    };
+    return Results.Ok(Ok(export));
+});
+
+// Account deletion (cascade).
+app.MapDelete("/v1/users/me", async (HttpContext ctx, UserRepo users, AuditRepo audit, Db db) =>
+{
+    if (!db.Configured) return Results.Json(Fail("NO_DB", "User store not configured."), statusCode: 503);
+    var userId = CurrentUser.Id(ctx);
+    await audit.Log(userId, "delete_account", "user", userId);
+    await users.DeleteUser(userId);
+    return Results.Ok(Ok(new { deleted = true }));
+});
+
 app.MapPut("/v1/users/me/preferences", async (HttpContext ctx, UserPreferencesDto req, UserRepo users, AuditRepo audit, Db db) =>
 {
     if (!db.Configured) return Results.Json(Fail("NO_DB", "User store not configured."), statusCode: 503);
@@ -389,3 +428,4 @@ public record ManualRequest(string HomeTeamId, string AwayTeamId, string? Venue 
 public record SaveRequest(string FixtureId);
 public record NotificationPrefsRequest(bool NotifyPredictions, bool NotifyResults, bool NotifyNews);
 public record FavouritesPrefsRequest(List<string>? Teams, List<string>? Leagues);
+public record ComplianceRequest(bool IsAdult, string? Region);

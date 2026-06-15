@@ -1,4 +1,5 @@
-import { ScrollView, Pressable } from 'react-native';
+import { useState } from 'react';
+import { Alert, ScrollView, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import {
   Palette,
@@ -9,13 +10,16 @@ import {
   CircleHelp,
   CreditCard,
   ChevronRight,
+  Download,
   LogOut,
+  Trash2,
   type LucideIcon,
 } from 'lucide-react-native';
 
 import { Box, useTheme } from '@/core/theme/restyle';
 import { useResponsive } from '@/core/theme/responsive';
 import { logout } from '@/core/api/auth';
+import { deleteAccount, exportMyData } from '@/core/api/hooks';
 import { storage } from '@/core/storage/mmkv';
 import { Screen } from '@/components/layout/Screen';
 import { BRText } from '@/components/primitives/BRText';
@@ -45,7 +49,25 @@ export function ProfileScreen() {
   const theme = useTheme();
   const r = useResponsive();
 
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
   const signOut = async () => {
+    await logout();
+    storage.delete('betright.onboarded');
+    router.replace('/auth/login');
+  };
+
+  const exportData = async () => {
+    const data = await exportMyData();
+    Alert.alert('Data export ready', `Exported ${Object.keys(data).length} sections of your account data.`);
+  };
+
+  const removeAccount = async () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    await deleteAccount();
     await logout();
     storage.delete('betright.onboarded');
     router.replace('/auth/login');
@@ -97,7 +119,7 @@ export function ProfileScreen() {
           })}
         </BRCard>
 
-        <Box marginTop="lg">
+        <Box marginTop="lg" gap="sm">
           <BRButton
             label="Sign out"
             variant="secondary"
@@ -105,6 +127,24 @@ export function ProfileScreen() {
             radius="sm"
             height={r.s(44)}
             onPress={signOut}
+            fullWidth
+          />
+          <BRButton
+            label="Export my data"
+            variant="ghost"
+            icon={Download}
+            radius="sm"
+            height={r.s(40)}
+            onPress={exportData}
+            fullWidth
+          />
+          <BRButton
+            label={confirmDelete ? 'Tap again to permanently delete' : 'Delete account'}
+            variant="ghost"
+            icon={Trash2}
+            radius="sm"
+            height={r.s(40)}
+            onPress={removeAccount}
             fullWidth
           />
         </Box>

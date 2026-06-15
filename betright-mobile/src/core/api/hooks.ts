@@ -326,6 +326,21 @@ export function savePreferences(prefs: UserPreferencesPayload) {
   return putData<{ updated: boolean }>('/v1/users/me/preferences', prefs, () => ({ updated: true }));
 }
 
+/** Persist the age/region compliance gate result. */
+export function setCompliance(isAdult: boolean, region: string) {
+  return putData<{ updated: boolean }>('/v1/users/me/compliance', { isAdult, region }, () => ({ updated: true }));
+}
+
+/** Export everything the backend holds for the current user (GDPR-style). */
+export function exportMyData() {
+  return getData<Record<string, unknown>>('/v1/users/me/export', () => ({ note: 'Mock mode: no server data.' }));
+}
+
+/** Permanently delete the current user's account and data. */
+export function deleteAccount() {
+  return deleteData<{ deleted: boolean }>('/v1/users/me', () => ({ deleted: true }));
+}
+
 export function useNotifications() {
   return useQuery({
     queryKey: ['notifications'],

@@ -174,6 +174,9 @@ class User(Base):
     display_name: Mapped[str] = mapped_column(String)
     # PBKDF2 hash (set by the BFF on register); null for the seeded dev user.
     password_hash: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Compliance: backend is the source of truth for age/region gating.
+    is_adult: Mapped[bool] = mapped_column(Boolean, default=False)
+    region: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 

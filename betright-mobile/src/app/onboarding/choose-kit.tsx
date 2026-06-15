@@ -32,8 +32,8 @@ export default function ChooseKit() {
 
   return (
     <OnboardingShell
-      step={4}
-      total={5}
+      step={5}
+      total={6}
       title="Choose Your Kit"
       subtitle="Pick the look your app wears. You can switch kits anytime."
       onNext={finish}

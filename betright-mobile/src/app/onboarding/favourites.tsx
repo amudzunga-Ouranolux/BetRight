@@ -21,8 +21,8 @@ export default function ChooseFavourites() {
 
   return (
     <OnboardingShell
-      step={1}
-      total={5}
+      step={2}
+      total={6}
       title="Choose Favourites"
       subtitle="Select the leagues, competitions and teams you want analysed."
       onNext={() => router.push('/onboarding/interests')}

@@ -20,8 +20,8 @@ export default function NotificationPreferences() {
 
   return (
     <OnboardingShell
-      step={3}
-      total={5}
+      step={4}
+      total={6}
       title="Notifications"
       subtitle="Choose what you want to be alerted about. Adjust anytime in settings."
       onNext={() => router.push('/onboarding/choose-kit')}

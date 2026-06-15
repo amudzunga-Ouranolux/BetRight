@@ -138,8 +138,8 @@ export default function ChooseSports() {
 
   return (
     <OnboardingShell
-      step={0}
-      total={5}
+      step={1}
+      total={6}
       title="Choose Sports"
       subtitle="Select the sports you love. We'll personalize your experience."
       onNext={() => router.push('/onboarding/favourites')}

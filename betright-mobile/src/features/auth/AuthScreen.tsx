@@ -56,7 +56,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
         router.replace('/(tabs)/home');
       } else {
         await register(email, password, name);
-        router.replace('/onboarding/sports');
+        router.replace('/onboarding/age' as never);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.');

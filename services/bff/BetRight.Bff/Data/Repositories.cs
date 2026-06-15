@@ -3,7 +3,7 @@ using Dapper;
 namespace BetRight.Bff.Data;
 
 // Row shapes (Dapper maps snake_case columns via MatchNamesWithUnderscores).
-public record UserRow(string UserId, string? Email, string DisplayName);
+public record UserRow(string UserId, string? Email, string DisplayName, bool IsAdult = false, string? Region = null);
 
 public record UserAuthRow(string UserId, string? Email, string DisplayName, string? PasswordHash);
 
@@ -25,7 +25,7 @@ public class UserRepo(Db db)
     {
         using var c = db.Open();
         return await c.QuerySingleOrDefaultAsync<UserRow>(
-            "select user_id, email, display_name from users where user_id = @userId", new { userId });
+            "select user_id, email, display_name, is_adult, region from users where user_id = @userId", new { userId });
     }
 
     public async Task<UserAuthRow?> GetAuthByEmail(string email)
@@ -43,6 +43,14 @@ public class UserRepo(Db db)
             @"insert into users (user_id, email, display_name, password_hash, created_at)
               values (@userId, @email, @displayName, @passwordHash, now())",
             new { userId, email, displayName, passwordHash });
+    }
+
+    public async Task SetCompliance(string userId, bool isAdult, string? region)
+    {
+        using var c = db.Open();
+        await c.ExecuteAsync(
+            "update users set is_adult=@isAdult, region=@region where user_id=@userId",
+            new { userId, isAdult, region });
     }
 
     public async Task DeleteUser(string userId)
