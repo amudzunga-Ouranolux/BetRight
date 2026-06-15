@@ -16,11 +16,9 @@ from collections import defaultdict
 
 from sqlalchemy import select
 
-from ..engine import ensemble
-from ..engine.dixon_coles import build_goal_model, expected_goals
-from ..engine.elo import rating_outcome, updated_ratings
+from ..engine.elo import updated_ratings
 from ..engine.form import HistMatch, compute_form
-from ..engine.markets import derive_markets, most_likely_score, outcome_probabilities
+from ..engine.predictor import predict
 from ..store import models
 from ..store.db import get_session
 
@@ -34,10 +32,9 @@ def _result(h: int, a: int) -> str:
 
 def run() -> None:
     session = get_session()
-    matches = [
-        m for m in session.scalars(select(models.Match).order_by(models.Match.kickoff_time))
-        if m.competition_id == "wc"
-    ]
+    # Walk ALL matches (international history + WC) in order so Elo/form are warm
+    # from real history; only WC matches are scored (the held-out evaluation set).
+    matches = list(session.scalars(select(models.Match).order_by(models.Match.kickoff_time)))
     session.close()
 
     elo: dict[str, float] = defaultdict(lambda: INITIAL_ELO)
@@ -45,38 +42,42 @@ def run() -> None:
     rows: list[dict] = []
 
     for m in matches:
+        score_it = m.competition_id == "wc"
         as_of = m.kickoff_time
-        hf = compute_form(m.home_team_id, prior, as_of, BASE_GOAL_RATE)
-        af = compute_form(m.away_team_id, prior, as_of, BASE_GOAL_RATE)
-        venue = "neutral" if m.neutral else "home"
-
-        hxg, axg = expected_goals(hf.attack_strength, hf.defence_strength, af.attack_strength, af.defence_strength, BASE_GOAL_RATE, venue)
-        gm = build_goal_model(hxg, axg)
-        statistical = outcome_probabilities(gm)
-        rating = rating_outcome(elo[m.home_team_id], elo[m.away_team_id], neutral=m.neutral)
-        final = ensemble.combine({"statistical": statistical, "team_rating": rating})
-        markets = derive_markets(gm)
-        likely = most_likely_score(gm).replace(" ", "")
-
         ah, ag = m.home_goals, m.away_goals
-        actual = _result(ah, ag)
-        probs = {"home_win": final.home_win / 100, "draw": final.draw / 100, "away_win": final.away_win / 100}
-        pred = max(probs, key=probs.get)
 
-        rows.append({
-            "year": as_of.year,
-            "correct": pred == actual,
-            "brier": sum((probs[k] - (1.0 if k == actual else 0.0)) ** 2 for k in probs),
-            "logloss": -math.log(max(probs[actual], 1e-12)),
-            "top_prob": probs[pred],
-            "goal_abs_err": abs((hxg + axg) - (ah + ag)),
-            "over_correct": (markets.over25 >= 50) == (ah + ag > 2.5),
-            "btts_correct": (markets.btts_yes >= 50) == (ah >= 1 and ag >= 1),
-            "scoreline_hit": likely == f"{ah}-{ag}",
-            "home_correct": actual == "home_win",
-            "elo_fav_correct": actual == ("home_win" if elo[m.home_team_id] >= elo[m.away_team_id] else "away_win"),
-        })
+        if score_it:
+            hf = compute_form(m.home_team_id, prior, as_of, BASE_GOAL_RATE)
+            af = compute_form(m.away_team_id, prior, as_of, BASE_GOAL_RATE)
+            venue = "neutral" if m.neutral else "home"
 
+            # Use the real production prediction path (adaptive ensemble + markets).
+            res = predict(
+                fixture_id=m.match_id, home_team_id=m.home_team_id, away_team_id=m.away_team_id,
+                home_name=m.home_team_id, away_name=m.away_team_id, home_form=hf, away_form=af,
+                elo_home=elo[m.home_team_id], elo_away=elo[m.away_team_id],
+                league_base_goal_rate=BASE_GOAL_RATE, venue=venue, as_of=as_of,
+            )
+            o, markets = res.outcome, res.markets
+            actual = _result(ah, ag)
+            probs = {"home_win": o.home_win / 100, "draw": o.draw / 100, "away_win": o.away_win / 100}
+            pred = res.predicted_result
+
+            rows.append({
+                "year": as_of.year,
+                "correct": pred == actual,
+                "brier": sum((probs[k] - (1.0 if k == actual else 0.0)) ** 2 for k in probs),
+                "logloss": -math.log(max(probs[actual], 1e-12)),
+                "top_prob": probs[pred],
+                "goal_abs_err": abs((res.home_xg + res.away_xg) - (ah + ag)),
+                "over_correct": (markets.over25 >= 50) == (ah + ag > 2.5),
+                "btts_correct": (markets.btts_yes >= 50) == (ah >= 1 and ag >= 1),
+                "scoreline_hit": res.likely_score.replace(" ", "") == f"{ah}-{ag}",
+                "home_correct": actual == "home_win",
+                "elo_fav_correct": actual == ("home_win" if elo[m.home_team_id] >= elo[m.away_team_id] else "away_win"),
+            })
+
+        # Always update Elo + form history (warm-up from all matches).
         nh, na = updated_ratings(elo[m.home_team_id], elo[m.away_team_id], ah, ag, neutral=m.neutral)
         elo[m.home_team_id], elo[m.away_team_id] = nh, na
         prior.append(HistMatch(as_of, m.home_team_id, m.away_team_id, ah, ag))

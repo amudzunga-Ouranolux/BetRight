@@ -73,8 +73,22 @@ def predict(
     statistical = outcome_probabilities(model)
     rating = rating_outcome(elo_home, elo_away, neutral=(venue == "neutral"))
 
-    # 3. Ensemble (renormalised over present models), then apply calibration.
-    final = ensemble.combine({"statistical": statistical, "team_rating": rating})
+    # 3. Ensemble — adaptive weighting. The statistical (Dixon-Coles) model is only
+    # as good as the form data behind it; for sides with little history (e.g. national
+    # teams) it is near-uniform, so down-weight it and let Elo lead. With full form
+    # samples it keeps its default weight.
+    from .confidence import FULL_SAMPLE
+
+    form_conf = min(home_form.matches_sampled, away_form.matches_sampled) / FULL_SAMPLE
+    form_conf = max(0.15, min(1.0, form_conf))
+    # Elo is the stronger 1X2/result model; until the ML model lands it inherits the
+    # ML model's weight. The statistical (Dixon-Coles) model is mainly a goals model,
+    # further down-weighted on the result when its form data is thin.
+    weights = {
+        "statistical": ensemble.TARGET_WEIGHTS["statistical"] * form_conf,
+        "team_rating": ensemble.TARGET_WEIGHTS["team_rating"] + ensemble.TARGET_WEIGHTS["ml"],
+    }
+    final = ensemble.combine({"statistical": statistical, "team_rating": rating}, weights)
     if calibration_temp and abs(calibration_temp - 1.0) > 1e-6:
         h, d, a = apply_temperature(final.home_win, final.draw, final.away_win, calibration_temp)
         final = OneXTwo(home_win=h, draw=d, away_win=a)

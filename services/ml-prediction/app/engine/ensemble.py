@@ -22,21 +22,22 @@ TARGET_WEIGHTS = {
 }
 
 
-def combine(models: dict[str, OneXTwo]) -> OneXTwo:
-    """Blend the supplied model outputs using renormalised target weights.
+def combine(models: dict[str, OneXTwo], weights: dict[str, float] | None = None) -> OneXTwo:
+    """Blend the supplied model outputs using renormalised weights.
 
-    ``models`` maps a model name (must be a key in TARGET_WEIGHTS) to its 1X2
-    estimate. Missing models are simply absent; the present models' weights are
-    renormalised to sum to 1.
+    ``models`` maps a model name to its 1X2 estimate. ``weights`` overrides the
+    default TARGET_WEIGHTS (e.g. to down-weight the statistical model when form
+    data is sparse). Present models' weights are renormalised to sum to 1.
     """
-    present = {name: m for name, m in models.items() if name in TARGET_WEIGHTS}
+    table = weights or TARGET_WEIGHTS
+    present = {name: m for name, m in models.items() if name in table}
     if not present:
         raise ValueError("ensemble.combine requires at least one known model")
 
-    weight_total = sum(TARGET_WEIGHTS[name] for name in present)
+    weight_total = sum(table[name] for name in present)
     home = draw = away = 0.0
     for name, m in present.items():
-        w = TARGET_WEIGHTS[name] / weight_total
+        w = table[name] / weight_total
         home += w * m.home_win
         draw += w * m.draw
         away += w * m.away_win
