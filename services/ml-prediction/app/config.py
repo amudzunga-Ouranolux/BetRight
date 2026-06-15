@@ -24,6 +24,8 @@ class Settings:
         self.scheduler_enabled: bool = os.getenv("SCHEDULER_ENABLED", "false").lower() == "true"
         self.predict_interval_minutes: int = int(os.getenv("PREDICT_INTERVAL_MINUTES", "60"))
         self.postmatch_interval_minutes: int = int(os.getenv("POSTMATCH_INTERVAL_MINUTES", "30"))
+        # How often to re-pull fixtures/live scores/results from the provider.
+        self.ingest_interval_minutes: int = int(os.getenv("INGEST_INTERVAL_MINUTES", "15"))
 
 
 @lru_cache

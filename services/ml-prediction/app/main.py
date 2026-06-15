@@ -55,11 +55,12 @@ async def lifespan(app: FastAPI):
         _scheduler = BackgroundScheduler(daemon=True)
         _scheduler.add_job(run_predict_batch, "interval", minutes=settings.predict_interval_minutes, id="predict")
         _scheduler.add_job(_postmatch, "interval", minutes=settings.postmatch_interval_minutes, id="postmatch")
-        # Daily data refresh — only when a provider key is configured.
-        if settings.football_data_api_key:
+        # Continuous data refresh (fixtures / live scores / results). ESPN needs no key;
+        # football-data only runs when its key is set (run() skips cleanly otherwise).
+        if settings.provider != "football-data" or settings.football_data_api_key:
             from .data.ingest import run as run_ingest
 
-            _scheduler.add_job(run_ingest, "interval", hours=24, id="ingest")
+            _scheduler.add_job(run_ingest, "interval", minutes=settings.ingest_interval_minutes, id="ingest")
         _scheduler.start()
     try:
         yield
