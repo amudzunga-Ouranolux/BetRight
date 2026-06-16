@@ -1,0 +1,37 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_USE_MOCK": "true"
+      }
+    },
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_USE_MOCK": "true"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_USE_MOCK": "false",
+        "EXPO_PUBLIC_API_URL": "https://api.betright.example"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
