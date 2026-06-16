@@ -1,0 +1,20 @@
+# Exclude from the EAS Build upload archive (mirrors .gitignore syntax).
+# EAS reinstalls dependencies in the cloud, so node_modules must NOT be uploaded —
+# this is what bloated the archive to 210 MB and slowed the fingerprint step.
+node_modules/
+.expo/
+dist/
+dist-*/
+web-build/
+.git/
+
+# Local artefacts / not needed for the build
+*.log
+*.db
+coverage/
+.vscode/
+.idea/
+
+# Docs (not needed to compile)
+BUILD_APK.md
+DESIGN_SYSTEM.md

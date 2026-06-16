@@ -176,7 +176,7 @@ def _tip(home_name: str, venue: str, elo_home: float, elo_away: float) -> str:
         return f"{home_name} carry a clear edge here with stronger ratings and recent output."
     if edge > 0:
         return f"{home_name} have a slight advantage; the two sides are otherwise closely matched."
-    return f"{home_name} are up against it on the numbers — expect a tight contest."
+    return f"{home_name} are up against it on the numbers; expect a tight contest."
 
 
 def _run(
