@@ -35,6 +35,14 @@ def run() -> None:
     # Walk ALL matches (international history + WC) in order so Elo/form are warm
     # from real history; only WC matches are scored (the held-out evaluation set).
     matches = list(session.scalars(select(models.Match).order_by(models.Match.kickoff_time)))
+    # Squad-strength snapshots (covered teams) for the with-vs-without comparison.
+    from ..config import get_settings
+    season = get_settings().squad_season
+    squads: dict[str, float] = {
+        s.team_id: s.strength_elo
+        for s in session.scalars(select(models.TeamSquadStrength).where(models.TeamSquadStrength.season == season))
+        if s.strength_elo is not None and s.matched >= 11
+    }
     session.close()
 
     elo: dict[str, float] = defaultdict(lambda: INITIAL_ELO)
@@ -77,6 +85,26 @@ def run() -> None:
                 "elo_fav_correct": actual == ("home_win" if elo[m.home_team_id] >= elo[m.away_team_id] else "away_win"),
             })
 
+            # With-vs-without squad: re-predict with squad strength when both sides covered.
+            hs, as_ = squads.get(m.home_team_id), squads.get(m.away_team_id)
+            if hs is not None and as_ is not None:
+                res2 = predict(
+                    fixture_id=m.match_id, home_team_id=m.home_team_id, away_team_id=m.away_team_id,
+                    home_name=m.home_team_id, away_name=m.away_team_id, home_form=hf, away_form=af,
+                    elo_home=elo[m.home_team_id], elo_away=elo[m.away_team_id],
+                    league_base_goal_rate=BASE_GOAL_RATE, venue=venue, as_of=as_of,
+                    home_squad=hs, away_squad=as_,
+                )
+                o2 = res2.outcome
+                p2 = {"home_win": o2.home_win / 100, "draw": o2.draw / 100, "away_win": o2.away_win / 100}
+                rows[-1].update({
+                    "covered": True,
+                    "base_correct": pred == actual,
+                    "base_brier": rows[-1]["brier"],
+                    "sq_correct": res2.predicted_result == actual,
+                    "sq_brier": sum((p2[k] - (1.0 if k == actual else 0.0)) ** 2 for k in p2),
+                })
+
         # Always update Elo + form history (warm-up from all matches).
         nh, na = updated_ratings(elo[m.home_team_id], elo[m.away_team_id], ah, ag, neutral=m.neutral)
         elo[m.home_team_id], elo[m.away_team_id] = nh, na
@@ -86,6 +114,22 @@ def run() -> None:
     for year in sorted({r["year"] for r in rows}):
         _report(f"Season {year}", [r for r in rows if r["year"] == year])
     _calibration(rows)
+    _squad_comparison([r for r in rows if r.get("covered")])
+
+
+def _squad_comparison(rows: list[dict]) -> None:
+    print("\n=== Squad model: with vs without (covered matches only) ===")
+    n = len(rows)
+    if not n:
+        print("  No covered matches yet — run: python -m app.jobs.map_squads")
+        return
+    base_acc = sum(r["base_correct"] for r in rows) / n * 100
+    sq_acc = sum(r["sq_correct"] for r in rows) / n * 100
+    base_brier = sum(r["base_brier"] for r in rows) / n
+    sq_brier = sum(r["sq_brier"] for r in rows) / n
+    print(f"  covered matches     : {n}")
+    print(f"  1X2 accuracy        : without {base_acc:5.1f}%  ->  with squad {sq_acc:5.1f}%")
+    print(f"  Brier score         : without {base_brier:5.3f}  ->  with squad {sq_brier:5.3f}")
 
 
 def _report(title: str, rows: list[dict]) -> None:

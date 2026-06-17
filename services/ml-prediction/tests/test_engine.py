@@ -13,6 +13,7 @@ from app.engine.form import HistMatch, TeamForm, compute_form
 from app.engine.markets import derive_markets, outcome_probabilities
 from app.engine.poisson import poisson_column, poisson_pmf
 from app.engine.predictor import predict
+from app.engine.squad import squad_outcome
 from app.jobs.postmatch import score_prediction
 
 UTC = timezone.utc
@@ -153,6 +154,27 @@ def test_estimate_temperature_overconfident_and_small_sample():
     assert estimate_temperature(overconfident) > 1.0
     # too few samples -> neutral
     assert estimate_temperature([(0.8, True)]) == 1.0
+
+
+def test_squad_outcome_favours_stronger_squad():
+    o = squad_outcome(1900, 1500, neutral=True)
+    assert o.home_win + o.draw + o.away_win == pytest.approx(100.0, abs=1e-6)
+    assert o.home_win > o.away_win
+
+
+def test_predict_squad_model_shifts_outcome():
+    even = TeamForm("a", 1.5, 1.2, 14, 1.5, 1.2, ["W", "D", "W", "L", "W"])
+    even2 = TeamForm("b", 1.5, 1.2, 14, 1.5, 1.2, ["W", "D", "W", "L", "W"])
+    kw = dict(
+        fixture_id="fx", home_team_id="a", away_team_id="b", home_name="A", away_name="B",
+        home_form=even, away_form=even2, elo_home=1500, elo_away=1500,
+        league_base_goal_rate=1.4, venue="neutral", as_of=datetime(2026, 6, 13, tzinfo=UTC),
+    )
+    base = predict(**kw)
+    stronger = predict(**kw, home_squad=1950, away_squad=1450)
+    # A much stronger home squad must raise the home win probability.
+    assert stronger.outcome.home_win > base.outcome.home_win
+    assert stronger.outcome.home_win + stronger.outcome.draw + stronger.outcome.away_win == pytest.approx(100.0, abs=0.3)
 
 
 def test_score_prediction_brier_logloss():

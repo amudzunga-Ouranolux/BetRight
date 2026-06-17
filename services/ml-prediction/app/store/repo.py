@@ -67,6 +67,23 @@ def get_rating(session: Session, team_id: str) -> models.TeamRating | None:
     return session.get(models.TeamRating, team_id)
 
 
+# Minimum mapped players before a squad-strength signal is trusted (a starting XI).
+SQUAD_MIN_COVERAGE = 11
+
+
+def squad_strength_for(session: Session, team_id: str, season: int) -> float | None:
+    """Squad-strength Elo for a team/season, or None if coverage is too thin."""
+    row = session.scalars(
+        select(models.TeamSquadStrength).where(
+            models.TeamSquadStrength.team_id == team_id,
+            models.TeamSquadStrength.season == season,
+        )
+    ).first()
+    if row and row.strength_elo is not None and row.matched >= SQUAD_MIN_COVERAGE:
+        return row.strength_elo
+    return None
+
+
 def matches_between(session: Session, a: str, b: str, limit: int = 5) -> list[models.Match]:
     """Most recent finished matches between two teams (either home/away order)."""
     stmt = (

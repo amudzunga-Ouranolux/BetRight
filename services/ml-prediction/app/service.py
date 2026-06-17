@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
+from .config import get_settings
 from .engine.form import compute_form
 from .engine.predictor import MODEL_VERSION, PredictionResult, predict
 from .schemas import (
@@ -201,6 +202,10 @@ def _run(
     historical_accuracy = mv.accuracy if (mv and mv.accuracy is not None) else None
     calibration_temp = mv.calibration_temp if mv else 1.0
 
+    season = get_settings().squad_season
+    home_squad = repo.squad_strength_for(session, home.team_id, season)
+    away_squad = repo.squad_strength_for(session, away.team_id, season)
+
     return predict(
         fixture_id=fixture_id,
         home_team_id=home.team_id,
@@ -216,6 +221,8 @@ def _run(
         as_of=as_of,
         historical_accuracy=historical_accuracy,
         calibration_temp=calibration_temp,
+        home_squad=home_squad,
+        away_squad=away_squad,
     )
 
 

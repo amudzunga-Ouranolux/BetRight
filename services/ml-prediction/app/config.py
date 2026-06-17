@@ -18,6 +18,17 @@ class Settings:
         )
         # Data provider: 'espn' (free, no key, live WC) or 'football-data' (needs key).
         self.provider: str = os.getenv("PROVIDER", "espn")
+        # API-Football (squads / player clubs / their predictions). Free tier =
+        # seasons 2022-2024, 100 req/day. Keys come from env, never committed.
+        self.api_football_key: str = os.getenv("API_FOOTBALL_KEY", "")
+        self.api_football_base_url: str = os.getenv(
+            "API_FOOTBALL_BASE_URL", "https://v3.football.api-sports.io"
+        )
+        self.sportmonks_key: str = os.getenv("SPORTMONKS_KEY", "")
+        # Season used for squad/club lookups (2022 on the free plan; 2026 when paid).
+        self.squad_season: int = int(os.getenv("SQUAD_SEASON", "2022"))
+        # Safety cap on API-Football requests per job run (free limit is 100/day).
+        self.api_football_daily_cap: int = int(os.getenv("API_FOOTBALL_DAILY_CAP", "90"))
         self.port: int = int(os.getenv("PORT", "8001"))
         # Background scheduler (batch predict + post-match). Off by default so dev
         # reloads and tests don't spawn timers; compose turns it on.

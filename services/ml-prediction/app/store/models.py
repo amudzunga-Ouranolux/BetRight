@@ -243,3 +243,32 @@ class AuditLog(Base):
     entity_id: Mapped[str | None] = mapped_column(String, nullable=True)
     meta_json: Mapped[dict | None] = mapped_column(JSONFlex, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+# ---------------------------------------------------------------------------
+# Squad strength: player -> current club -> ClubElo -> aggregated team signal.
+# ---------------------------------------------------------------------------
+
+class PlayerClubSnapshot(Base):
+    __tablename__ = "player_club_snapshots"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    player_id: Mapped[int] = mapped_column(Integer, index=True)
+    name: Mapped[str] = mapped_column(String)
+    national_team_id: Mapped[str] = mapped_column(String, index=True)  # our team_id
+    season: Mapped[int] = mapped_column(Integer)
+    club_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    club_elo: Mapped[float | None] = mapped_column(Float, nullable=True)
+    position: Mapped[str | None] = mapped_column(String, nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class TeamSquadStrength(Base):
+    __tablename__ = "team_squad_strength"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    team_id: Mapped[str] = mapped_column(ForeignKey("teams.team_id"), index=True)
+    season: Mapped[int] = mapped_column(Integer, index=True)
+    strength_elo: Mapped[float | None] = mapped_column(Float, nullable=True)
+    score: Mapped[float] = mapped_column(Float, default=0.0)
+    matched: Mapped[int] = mapped_column(Integer, default=0)
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    as_of: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)

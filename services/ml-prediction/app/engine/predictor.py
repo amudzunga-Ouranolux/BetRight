@@ -57,6 +57,8 @@ def predict(
     as_of: datetime,
     historical_accuracy: float | None = None,
     calibration_temp: float = 1.0,
+    home_squad: float | None = None,
+    away_squad: float | None = None,
 ) -> PredictionResult:
     # 1. Expected goals -> Dixon-Coles score matrix.
     home_xg, away_xg = expected_goals(
@@ -84,11 +86,23 @@ def predict(
     # Elo is the stronger 1X2/result model; until the ML model lands it inherits the
     # ML model's weight. The statistical (Dixon-Coles) model is mainly a goals model,
     # further down-weighted on the result when its form data is thin.
-    weights = {
-        "statistical": ensemble.TARGET_WEIGHTS["statistical"] * form_conf,
-        "team_rating": ensemble.TARGET_WEIGHTS["team_rating"] + ensemble.TARGET_WEIGHTS["ml"],
-    }
-    final = ensemble.combine({"statistical": statistical, "team_rating": rating}, weights)
+    tw = ensemble.TARGET_WEIGHTS
+    models = {"statistical": statistical, "team_rating": rating}
+    weights = {"statistical": tw["statistical"] * form_conf, "team_rating": tw["team_rating"]}
+
+    if home_squad is not None and away_squad is not None:
+        from .squad import squad_outcome
+
+        models["player_lineup"] = squad_outcome(home_squad, away_squad, neutral=(venue == "neutral"))
+        weights["player_lineup"] = tw["player_lineup"]
+        # No ML model yet: split its weight across the two strength models (Elo + squad).
+        weights["team_rating"] += tw["ml"] / 2
+        weights["player_lineup"] += tw["ml"] / 2
+    else:
+        # No squad data: Elo inherits the absent ML model's full weight.
+        weights["team_rating"] += tw["ml"]
+
+    final = ensemble.combine(models, weights)
     if calibration_temp and abs(calibration_temp - 1.0) > 1e-6:
         h, d, a = apply_temperature(final.home_win, final.draw, final.away_win, calibration_temp)
         final = OneXTwo(home_win=h, draw=d, away_win=a)

@@ -1,0 +1,11 @@
+# Secrets — never commit
+APIKeys
+.env
+*.env
+!*.env.example
+
+# Local artefacts
+*.db
+__pycache__/
+*.pyc
+.pytest_cache/

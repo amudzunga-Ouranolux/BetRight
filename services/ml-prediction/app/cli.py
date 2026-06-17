@@ -72,6 +72,11 @@ def cmd_team(session, args) -> None:
     print(f"  Elo {tp.elo}   form {''.join(f.recent_results) or '-'}   "
           f"GF/g {f.goals_scored_avg}  GA/g {f.goals_conceded_avg}  (sampled {f.matches_sampled})")
     print(f"  competition: {tp.competition_name or '-'}")
+    from .config import get_settings
+    ss = session.query(models.TeamSquadStrength).filter_by(
+        team_id=args.team_id, season=get_settings().squad_season).first()
+    if ss and ss.strength_elo:
+        print(f"  squad strength: {ss.strength_elo:.0f}  (matched {ss.matched}/{ss.total})")
     print(f"\n  Upcoming ({len(tp.upcoming)}):")
     for p in tp.upcoming:
         print("    " + _line(p))
@@ -120,6 +125,24 @@ def cmd_backtest(session, args) -> None:
     run()
 
 
+def cmd_squads(session, args) -> None:
+    from .config import get_settings
+    season = get_settings().squad_season
+    if args.run:
+        from .jobs.map_squads import run_api, run_seed
+        print(run_seed(args.seed) if args.seed else run_api())
+        return
+    rows = session.query(models.TeamSquadStrength).filter_by(season=season).all()
+    if not rows:
+        print(f"No squad strength mapped for season {season}. Run: python -m app.cli squads --run")
+        return
+    names = {t.team_id: t.name for t in session.query(models.Team).all()}
+    print(f"Squad strength (season {season}):")
+    for r in sorted(rows, key=lambda x: -(x.strength_elo or 0)):
+        elo = f"{r.strength_elo:.0f}" if r.strength_elo else "  -"
+        print(f"  {names.get(r.team_id, r.team_id):22} {elo}  (matched {r.matched}/{r.total})")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="python -m app.cli", description="Run/inspect the BetRight predictor.")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -151,6 +174,11 @@ def main() -> None:
 
     p = sub.add_parser("backtest", help="walk-forward test vs all completed matches")
     p.set_defaults(func=cmd_backtest)
+
+    p = sub.add_parser("squads", help="list squad strength, or --run to map it")
+    p.add_argument("--run", action="store_true", help="run the API-Football mapping job")
+    p.add_argument("--seed", help="seed from CSV instead of the API")
+    p.set_defaults(func=cmd_squads)
 
     args = parser.parse_args()
     session = get_session()
